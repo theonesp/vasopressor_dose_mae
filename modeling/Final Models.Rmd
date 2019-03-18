@@ -1,0 +1,200 @@
+---
+title: "Models creation"
+author: "Miguel Ángel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Libraries
+
+```{r}
+library(readr)
+library(dplyr)
+library(Amelia)
+library(ggplot2)
+#library(xlsx)
+library(Hmisc)
+library(ResourceSelection)
+library(rms)
+#sudo ln -f -s $(/usr/libexec/java_home)/jre/lib/server/libjvm.dylib /usr/local/lib
+library(rJava)
+library(Deducer)
+require(MASS)
+```
+
+
+# Creating dataset to fit logistc regression model
+
+```{r}
+#detach('pachage::dplyr')
+
+relevant_data<-FinalHemodynamicsDataset%>%
+dplyr::select( Case_Name
+               ,Any_MAE
+              ,Gender
+              ,Age
+              ,Category
+              ,duration_Surgery_min
+              ,T_STS_RiskAlgorithm_median_imp
+              ,total_pressors_formula_mg
+              ,AUT50MAP_total_min
+              ,Q_AUT50MAP_total_min
+              ,Q_total_pressors_formula_mg
+              ,Q_AUT65MAP_total_min
+              ,Q_AOT65MAP_total_min
+              ,AUT65MAP_total_min
+              ,AOT65MAP_total_min
+              ,delta_HCT_pct_median_imp
+              ,mean_ef_median_imp
+              ,AUC65MAP_total_mmHgmin
+              ,TWA65MAP_total_mmHg
+              ,Q_AUC65MAP_total_mmHgmin
+              ,Q_TWA65MAP_total_mmHg
+              ,Q_AOC65MAP_total_mmHgmin
+              )
+```
+
+# Factorizing Variables
+
+```{r}
+# Other variables to be factorized
+relevant_data$Gender<-as.factor(relevant_data$Gender)
+relevant_data$Category<-as.factor(relevant_data$Category)
+relevant_data$Any_MAE<-as.factor(relevant_data$Any_MAE)
+
+# Factorizing Quarrtiles
+relevant_data$Q_AUT50MAP_total_min<-as.factor(relevant_data$Q_AUT50MAP_total_min)
+relevant_data$Q_AUT65MAP_total_min<-as.factor(relevant_data$Q_AUT65MAP_total_min)
+relevant_data$Q_AUT65MAP_total_min<-as.factor(relevant_data$Q_AUT65MAP_total_min)
+relevant_data$Q_AOT65MAP_total_min<-as.factor(relevant_data$Q_AOT65MAP_total_min)
+relevant_data$Q_total_pressors_formula_mg<-as.factor(relevant_data$Q_total_pressors_formula_mg)
+relevant_data$Q_AUC65MAP_total_mmHgmin<-as.factor(relevant_data$Q_AUC65MAP_total_mmHgmin)
+relevant_data$Q_AOC65MAP_total_mmHgmin<-as.factor(relevant_data$Q_AOC65MAP_total_mmHgmin)
+relevant_data$Q_TWA65MAP_total_mmHg<-as.factor(relevant_data$Q_TWA65MAP_total_mmHg)
+
+# Factorizing Tertiles
+relevant_data$T_STS_RiskAlgorithm_median_imp<-as.factor(relevant_data$T_STS_RiskAlgorithm_median_imp)
+
+#relevant_data$Q_AUT80SBP_total_min<-as.factor(relevant_data$Q_AUT80SBP_total_min)
+
+# Factorizing tertiles
+# relevant_data$T_AUT50MAP_total_min<-as.factor(relevant_data$T_AUT50MAP_total_min)
+# relevant_data$T_AUT65MAP_total_min<-as.factor(relevant_data$T_AUT65MAP_total_min)
+# relevant_data$T_AOT65MAP_total_min<-as.factor(relevant_data$T_AOT65MAP_total_min)
+# relevant_data$T_total_pressors_formula_mg<-as.factor(relevant_data$T_total_pressors_formula_mg)
+
+#relevant_data$Anesthesiologist<-as.factor(relevant_data$Anesthesiologist)
+
+# creating T_STS_RiskAlgorithm_median_imp variable
+
+
+```
+
+
+# Multivariate log regression Tertiles of Pressors and MAP adjusted with offset and OR
+
+```{r}
+# Selecting reference levels for the categorical variables
+relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
+relevant_data$Category <- relevel(relevant_data$Category, ref = "CABG")
+
+mod_multiv<-glm(Any_MAE ~ 
+                 +Q_total_pressors_formula_mg
+                 +Q_AOC65MAP_total_mmHgmin
+                 +T_STS_RiskAlgorithm_median_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 #uncomment only for studying interaction (don't factorize variable Q when studying interaction)
+                #+Q_AOC65MAP_total_mmHgmin*Q_total_pressors_formula_mg
+                 +offset(log(duration_Surgery_min))
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+mod_multiv
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table['yAxis']<- length(boxLabels):1
+
+oddsratios_table_only_quartiles<-oddsratios_table[11:16,]
+
+#write.xlsx(as.data.frame(print(oddsratios_table)), "oddsratios_table.xlsx")
+
+```
+
+## AUC
+
+```{r}
+ROC<-rocplot(mod_multiv)
+cat('AUC: ')
+ROC$plot_env$auc
+```
+
+## Hosmer-Lemeshow goodness of fit test
+
+If the p-value is too small, we don’t have to include it, given the conservative property of the test. 
+
+```{r}
+hoslem.test(mod_multiv$y, fitted(mod_multiv),g=10)
+```
+
+Since P value was larger than 0.05, we included it in the manuscript to make it more complete.
+
+# Exploratory analysis
+
+## New model for STS risk ratio tertile 3
+
+```{r}
+# Selecting reference levels for the categorical variables
+relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
+relevant_data$Category <- relevel(relevant_data$Category, ref = "CABG")
+
+relevant_data_STSrisk3<-subset(relevant_data, T_STS_RiskAlgorithm_median_imp==3)
+  
+
+mod_multiv<-glm(Any_MAE ~ 
+                  +Q_total_pressors_formula_mg
+                  +Q_AUC65MAP_total_mmHgmin
+                 #+T_STS_RiskAlgorithm_median_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +offset(log(duration_Surgery_min))
+                 ,family='binomial'
+                 ,data = relevant_data_STSrisk3
+                )
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table['yAxis']<- length(boxLabels):1
+
+oddsratios_table_only_quartiles<-oddsratios_table[11:16,]
+```
+
+
+
+

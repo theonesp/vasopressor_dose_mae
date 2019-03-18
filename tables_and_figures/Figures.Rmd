@@ -1,0 +1,318 @@
+---
+title: "Quantiles"
+author: "Miguel Ángel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Libs
+
+```{r}
+library(dplyr)
+library(plotly)
+#library(corrplot)
+library(Hmisc)
+#library(officer)
+library(xlsx)
+```
+
+
+
+```{r setup, include=FALSE}
+#load the data
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+```
+
+
+# Plots
+
+## Wrangling Q and T datasets for plotting
+
+```{r eval=FALSE, include=FALSE}
+###IMPORTANT detach plyr!!
+#detach('package:plyr')
+
+
+#Tertiles
+
+T_AUT50MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset %>%
+dplyr::group_by(T_AUT50MAP_total_min, T_total_pressors_formula_mg)%>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518)
+T_AUT50MAP_total_min_pressors_MAE<-T_AUT50MAP_total_min_pressors_MAE[complete.cases(T_AUT50MAP_total_min_pressors_MAE), ]
+library(reshape)
+T_AUT50MAP_total_min_pressors_MAE_matrix<-cast(data=T_AUT50MAP_total_min_pressors_MAE
+     ,T_AUT50MAP_total_min ~ T_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+T_AUT50MAP_total_min_pressors_MAE_matrix<-as.matrix(T_AUT50MAP_total_min_pressors_MAE_matrix)
+
+
+
+T_AUT65MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset %>%
+dplyr::group_by(T_AUT65MAP_total_min, T_total_pressors_formula_mg) %>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518)
+T_AUT65MAP_total_min_pressors_MAE<-T_AUT65MAP_total_min_pressors_MAE[complete.cases(T_AUT65MAP_total_min_pressors_MAE), ]
+library(reshape)
+T_AUT65MAP_total_min_pressors_MAE_matrix<-cast(data=T_AUT65MAP_total_min_pressors_MAE
+     ,T_AUT65MAP_total_min ~ T_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+T_AUT65MAP_total_min_pressors_MAE_matrix<-as.matrix(T_AUT65MAP_total_min_pressors_MAE_matrix)
+
+
+
+
+T_AOT65MAP_total_min_pressors_MAE<-(FinalHemodynamicsDataset) %>%
+dplyr::group_by(T_AOT65MAP_total_min, T_total_pressors_formula_mg) %>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518)
+T_AOT65MAP_total_min_pressors_MAE<-T_AOT65MAP_total_min_pressors_MAE[complete.cases(T_AOT65MAP_total_min_pressors_MAE), ]
+
+#Quartiles
+
+Q_AUT50MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset %>%
+dplyr::group_by(Q_AUT50MAP_total_min, Q_total_pressors_formula_mg)%>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
+Q_AUT50MAP_total_min_pressors_MAE<-Q_AUT50MAP_total_min_pressors_MAE[complete.cases(Q_AUT50MAP_total_min_pressors_MAE), ]
+library(reshape)
+Q_AUT50MAP_total_min_pressors_MAE_matrix<-cast(data=Q_AUT50MAP_total_min_pressors_MAE
+     ,Q_AUT50MAP_total_min ~ Q_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+Q_AUT50MAP_total_min_pressors_MAE_matrix<-as.data.frame(Q_AUT50MAP_total_min_pressors_MAE_matrix)
+colnames(Q_AUT50MAP_total_min_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_AUT50MAP_total_min_pressors_MAE_matrix)<-c('total AUT50 MAP  Q1','total AUT50 MAP  Q2','total AUT50 MAP  Q3','total AUT50 MAP  Q4')
+Q_AUT50MAP_total_min_pressors_MAE_matrix[,1]<-NULL
+Q_AUT50MAP_total_min_pressors_MAE_matrix<-round(Q_AUT50MAP_total_min_pressors_MAE_matrix,2)
+
+Q_AUT65MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset%>%
+dplyr::group_by(Q_AUT65MAP_total_min, Q_total_pressors_formula_mg) %>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
+Q_AUT65MAP_total_min_pressors_MAE<-Q_AUT65MAP_total_min_pressors_MAE[complete.cases(Q_AUT65MAP_total_min_pressors_MAE), ]
+library(reshape)
+Q_AUT65MAP_total_min_pressors_MAE_matrix<-cast(data=Q_AUT65MAP_total_min_pressors_MAE
+     ,Q_AUT65MAP_total_min ~ Q_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+Q_AUT65MAP_total_min_pressors_MAE_matrix<-as.data.frame(Q_AUT65MAP_total_min_pressors_MAE_matrix)
+colnames(Q_AUT65MAP_total_min_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_AUT65MAP_total_min_pressors_MAE_matrix)<-c('total AUT65 MAP  Q1','total AUT65 MAP  Q2','total AUT65 MAP  Q3','total AUT65 MAP  Q4')
+Q_AUT65MAP_total_min_pressors_MAE_matrix[,1]<-NULL
+Q_AUT65MAP_total_min_pressors_MAE_matrix<-round(Q_AUT65MAP_total_min_pressors_MAE_matrix,2)
+
+
+Q_AOT65MAP_total_min_pressors_MAE<-(FinalHemodynamicsDataset) %>%
+dplyr::group_by(Q_AOT65MAP_total_min, Q_total_pressors_formula_mg) %>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
+Q_AOT65MAP_total_min_pressors_MAE<-Q_AOT65MAP_total_min_pressors_MAE[complete.cases(Q_AOT65MAP_total_min_pressors_MAE), ]
+library(reshape)
+Q_AOT65MAP_total_min_pressors_MAE_matrix<-cast(data=Q_AOT65MAP_total_min_pressors_MAE
+     ,Q_AOT65MAP_total_min ~ Q_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+Q_AOT65MAP_total_min_pressors_MAE_matrix<-as.data.frame(Q_AOT65MAP_total_min_pressors_MAE_matrix)
+colnames(Q_AOT65MAP_total_min_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_AOT65MAP_total_min_pressors_MAE_matrix)<-c('total AOT65 MAP  Q1','total AOT65 MAP  Q2','total AOT65 MAP  Q3','total AOT65 MAP  Q4')
+Q_AOT65MAP_total_min_pressors_MAE_matrix[,1]<-NULL
+Q_AOT65MAP_total_min_pressors_MAE_matrix<-round(Q_AOT65MAP_total_min_pressors_MAE_matrix,2)
+
+#Quartiles of ratio
+
+Q_AUT50MAP_total_ratio_pressors_MAE<-FinalHemodynamicsDataset %>%
+dplyr::group_by(Q_AUT50MAP_total_ratio, Q_total_pressors_formula_mg)%>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
+Q_AUT50MAP_total_ratio_pressors_MAE<-Q_AUT50MAP_total_ratio_pressors_MAE[complete.cases(Q_AUT50MAP_total_ratio_pressors_MAE), ]
+library(reshape)
+Q_AUT50MAP_total_ratio_pressors_MAE_matrix<-cast(data=Q_AUT50MAP_total_ratio_pressors_MAE
+     ,Q_AUT50MAP_total_ratio ~ Q_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+Q_AUT50MAP_total_ratio_pressors_MAE_matrix<-as.data.frame(Q_AUT50MAP_total_ratio_pressors_MAE_matrix)
+colnames(Q_AUT50MAP_total_ratio_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_AUT50MAP_total_ratio_pressors_MAE_matrix)<-c('ratio AUT50 MAP  Q1','ratio AUT50 MAP  Q2','ratio AUT50 MAP  Q3','ratio AUT50 MAP  Q4')
+Q_AUT50MAP_total_ratio_pressors_MAE_matrix[,1]<-NULL
+Q_AUT50MAP_total_ratio_pressors_MAE_matrix<-round(Q_AUT50MAP_total_ratio_pressors_MAE_matrix,2)
+
+
+
+Q_AUT65MAP_total_ratio_pressors_MAE<-FinalHemodynamicsDataset%>%
+dplyr::group_by(Q_AUT65MAP_total_ratio, Q_total_pressors_formula_mg) %>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
+Q_AUT65MAP_total_ratio_pressors_MAE<-Q_AUT65MAP_total_ratio_pressors_MAE[complete.cases(Q_AUT65MAP_total_ratio_pressors_MAE), ]
+library(reshape)
+Q_AUT65MAP_total_ratio_pressors_MAE_matrix<-cast(data=Q_AUT65MAP_total_ratio_pressors_MAE
+     ,Q_AUT65MAP_total_ratio ~ Q_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+Q_AUT65MAP_total_ratio_pressors_MAE_matrix<-as.data.frame(Q_AUT65MAP_total_ratio_pressors_MAE_matrix)
+colnames(Q_AUT65MAP_total_ratio_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_AUT65MAP_total_ratio_pressors_MAE_matrix)<-c('ratio AUT65 MAP  Q1','ratio AUT65 MAP  Q2','ratio AUT65 MAP  Q3','ratio AUT65 MAP  Q4')
+Q_AUT65MAP_total_ratio_pressors_MAE_matrix[,1]<-NULL
+Q_AUT65MAP_total_ratio_pressors_MAE_matrix<-round(Q_AUT65MAP_total_ratio_pressors_MAE_matrix,2)
+
+
+# AUC Quartiles 
+
+
+Q_AUC65MAP_total_mmHgmin_pressors_MAE<-FinalHemodynamicsDataset%>%
+dplyr::group_by(Q_AUC65MAP_total_mmHgmin, Q_total_pressors_formula_mg) %>%
+dplyr::summarise('MAE rate (%)'=sum(Any_MAE)/518*100)
+Q_AUC65MAP_total_mmHgmin_pressors_MAE<-Q_AUC65MAP_total_mmHgmin_pressors_MAE[complete.cases(Q_AUC65MAP_total_mmHgmin_pressors_MAE), ]
+library(reshape)
+Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix<-cast(data=Q_AUC65MAP_total_mmHgmin_pressors_MAE
+     ,Q_AUC65MAP_total_mmHgmin ~ Q_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix<-as.data.frame(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix)
+colnames(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix)<-c('total AUC65 MAP  Q1','total AUC65 MAP  Q2','total AUC65 MAP  Q3','total AUC65 MAP  Q4')
+Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix[,1]<-NULL
+Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix<-round(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix,2)
+
+# TWA Quartiles 
+
+
+Q_TWA65MAP_total_mmHg_pressors_MAE<-FinalHemodynamicsDataset%>%
+dplyr::group_by(Q_TWA65MAP_total_mmHg, Q_total_pressors_formula_mg) %>%
+dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
+Q_TWA65MAP_total_mmHg_pressors_MAE<-Q_TWA65MAP_total_mmHg_pressors_MAE[complete.cases(Q_TWA65MAP_total_mmHg_pressors_MAE), ]
+library(reshape)
+Q_TWA65MAP_total_mmHg_pressors_MAE_matrix<-cast(data=Q_TWA65MAP_total_mmHg_pressors_MAE
+     ,Q_TWA65MAP_total_mmHg ~ Q_total_pressors_formula_mg
+     ,value = 'total_patientswith_MAE')
+Q_TWA65MAP_total_mmHg_pressors_MAE_matrix<-as.data.frame(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix)
+colnames(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix)<-c('total TWA MAP 65 Q1','total TWA MAP 65 Q2','total TWA MAP 65 Q3','total TWA MAP 65 Q4')
+Q_TWA65MAP_total_mmHg_pressors_MAE_matrix[,1]<-NULL
+Q_TWA65MAP_total_mmHg_pressors_MAE_matrix<-round(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix,2)
+
+```
+
+# 3D Plots Data
+
+## Exporting to excel
+
+```{r}
+write.xlsx(T_AUT50MAP_total_min_pressors_MAE_matrix, "T_AUT50MAP_total_min_pressors_MAE_matrix.xlsx")
+write.xlsx(T_AUT65MAP_total_min_pressors_MAE_matrix, "T_AUT65MAP_total_min_pressors_MAE_matrix.xlsx")
+
+write.xlsx(Q_AUT50MAP_total_min_pressors_MAE_matrix, "Q_AUT50MAP_total_min_pressors_MAE_matrix.xlsx")
+write.xlsx(Q_AUT65MAP_total_min_pressors_MAE_matrix, "Q_AUT65MAP_total_min_pressors_MAE_matrix.xlsx")
+write.xlsx(Q_AOT65MAP_total_min_pressors_MAE_matrix, "Q_AOT65MAP_total_min_pressors_MAE_matrix.xlsx")
+
+#quartiles ratio
+
+write.xlsx(Q_AUT50MAP_total_ratio_pressors_MAE_matrix, "Q_AUT50MAP_total_ratio_pressors_MAE_matrix.xlsx")
+write.xlsx(Q_AUT65MAP_total_ratio_pressors_MAE_matrix, "Q_AUT65MAP_total_ratio_pressors_MAE_matrix.xlsx")
+
+# AUC
+write.xlsx(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix,
+'Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix.xlsx')
+# TWA 
+write.xlsx(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix,
+'Q_TWA65MAP_total_mmHg_pressors_MAE_matrix.xlsx')
+```
+
+# Odd Ratio Plots
+
+# General model
+
+```{r}
+#Generate plots
+
+df <- oddsratios_table
+
+labels<-c('Age', 'Category: Aortic Surgery', 'Category: CABG + Valve', 'Category: Other', 'Category: Valve', 'delta HCT pct', 'Gender: Female', 'Mean EF','AUC MAP 65 mmHg Q2', 'AUC MAP 65 mmHg Q3', 'AUC MAP 65 mmHg Q4', 'total pressors formula mg Q2', 'total pressors formula mg Q3', 'total pressors formula mg Q4', 'STS Risk Algorithm Tertile 2', 'STS Risk Algorithm Tertile 3')
+number_of_exposures<-length(labels)+1
+
+df <- data.frame(yAxis = 2:number_of_exposures,
+                 boxOdds = oddsratios_table$OR[2:number_of_exposures] ,
+                 boxCILow = oddsratios_table$`2.5 %`[2:number_of_exposures],  
+                 boxCIHigh = oddsratios_table$`97.5 %`[2:number_of_exposures]
+)
+#df <- df[order(df$boxOdds),]
+
+p<-ggplot(df, aes(x = boxOdds
+                  , y = labels
+                  )) + 
+  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
+  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
+                 , size = .5
+                 , height = .2
+                 , color = "gray50") +
+  geom_point(size = 2, color = "#2980b9") +
+  #coord_trans(x = scales:::exp_trans(1.01)) +
+  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  ylab("Exposure") +
+  xlab("Odds ratio") +
+  ggtitle("Impact on Any MAE")
+
+```
+
+# Exploratory Analysis
+
+```{r}
+#Generate plots
+
+df <- oddsratios_table
+
+
+labels2<-c('Age', 'Category: CABG + Valve', 'Category: Valve', 'delta HCT pct', 'Gender: Female', 'Mean EF','AUC MAP 65 mmHg Q2', 'AUC MAP 65 mmHg Q3', 'AUC MAP 65 mmHg Q4', 'total pressors formula mg Q2', 'total pressors formula mg Q3', 'total pressors formula mg Q4')
+number_of_exposures2<-length(labels2)+1
+
+
+df <- data.frame(yAxis = 2:number_of_exposures2,
+                 boxOdds = oddsratios_table$OR[2:number_of_exposures2] ,
+                 boxCILow = oddsratios_table$`2.5 %`[2:number_of_exposures2],  
+                 boxCIHigh = oddsratios_table$`97.5 %`[2:number_of_exposures2]
+)
+#df <- df[order(df$boxOdds),]
+
+p<-ggplot(df, aes(x = boxOdds
+                  , y = labels2
+                  )) + 
+  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
+  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
+                 , size = .5
+                 , height = .2
+                 , color = "gray50") +
+  geom_point(size = 2, color = "#2980b9") +
+  #coord_trans(x = scales:::exp_trans(1.01)) +
+  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
+  theme_bw()+
+  theme(panel.grid.minor = element_blank()) +
+  ylab("Exposure") +
+  xlab("Odds ratio") +
+  ggtitle("Impact on Any MAE")
+
+```
+
+# Bubble plot
+
+```{r}
+colnames(Q_TWA65MAP_total_mmHg_pressors_MAE)[3]<-'MAE rate percentage'
+
+p <- plot_ly(Q_TWA65MAP_total_mmHg_pressors_MAE
+             , x = ~as.character(Q_TWA65MAP_total_mmHg)
+             , y = ~as.character(Q_total_pressors_formula_mg)
+             , text = ~round(`MAE rate percentage`,2)
+             , textfont = list( size = 10
+                                #,color = '#000000'
+                                )
+             , type = 'scatter'
+             , mode = 'markers+text'
+             , color = ~`MAE rate percentage`
+             , size = ~`MAE rate percentage`
+             , colors = c('#f1a9a087','#bd1200')
+             , sizes = c(10, 120)
+             , showlegend = F
+             , marker = list(
+               #size =~total_patientswith_MAE
+                opacity = 1
+          , sizemode = 'diameter')) %>%
+  layout(
+#title = 'Any MAE rate (%) for TWA-MAP under 65 mmHgNumber of cases = 518',
+         xaxis = list(showgrid = T, title='vasopressors dose Q'),
+         yaxis = list(showgrid = T, title='TWA-MAP < 65 mmHg Q'))
+
+htmlwidgets::saveWidget(p, "bubbleplot.html")
+
+```
+
+
+
