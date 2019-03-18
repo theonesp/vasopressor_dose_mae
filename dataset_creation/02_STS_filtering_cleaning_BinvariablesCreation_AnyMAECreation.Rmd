@@ -1,0 +1,768 @@
+---
+title: "Phenotyoing_Demographic_Analysis"
+output: html_document
+author: "Miguel Angel Armengol de la Hoz"
+date: "27 de febrero de 2018"
+toc: TRUE
+---
+
+
+```{r}
+library(dplyr)
+library(summarytools)
+library(readr)
+```
+
+
+```{r setup, include=FALSE}
+
+
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+
+##IMPORTANT
+#before converting date, run: 
+Sys.setlocale("LC_ALL","English")
+
+load("C:/BIG FILES/Phenotyping/STS.All.Status.Uni.v3.Rda")
+STS_All_Status_Uni <- STS.All.Status.Uni.v3
+
+
+STS_All_Status_Uni$Surgery_Date<-as.Date(STS_All_Status_Uni$Surgery_Date, format = "%d-%b-%y")
+
+STS_2_73_July_2011_Jun_2014 <- read_delim("C:/BIG FILES/Phenotyping/new STS Generator and README Feb18/STS_2_73_July_2011_Jun_2014.csv", 
+     ";", escape_double = FALSE, col_types = cols(Admission_Date = col_date(format = "%m/%d/%y"), 
+         Discharge_Date = col_date(format = "%m/%d/%y"), 
+         Surgery_Date = col_date(format = "%m/%d/%y")), 
+     trim_ws = TRUE)
+
+STS_2_81_July_2014_June_2017 <- read_delim("C:/BIG FILES/Phenotyping/new STS Generator and README Feb18/STS_2_81_July_2014_June_2017.csv", 
+    ";", escape_double = FALSE, col_types = cols(Admission_Date = col_date(format = "%m/%d/%y"), 
+        Discharge_Date = col_date(format = "%m/%d/%y"), 
+        Surgery_Date = col_date(format = "%m/%d/%y")), 
+    trim_ws = TRUE)
+
+library(readxl)
+data_superficial_wound_270_281_July2011_Jun_2014 <- read_excel("C:/BIG FILES/Phenotyping/new STS Generator and README Feb18/Bala_HgbA1C data update with superficial wound _270_281_dec 2016.xlsx", 
+    col_types = c("text", "date", "date", 
+        "date", "numeric", "numeric", "numeric", 
+        "text", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "text", "numeric", "text", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "text", "numeric", "text", "text", 
+        "text", "text", "numeric", "text", 
+        "text", "text", "numeric", "numeric", 
+        "text", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "text", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "text", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "text", "text", "text", 
+        "text", "text", "text", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "text", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "text"))
+
+data_superficial_wound_270_281_July2014_Dec_2016 <- read_excel("C:/BIG FILES/Phenotyping/new STS Generator and README Feb18/Bala_HgbA1C data update with superficial wound _270_281_dec 2016.xlsx", sheet = "Jul 14-Dec16", col_types = c("text", 
+"date", "date", "date", "numeric", 
+"text", "numeric", "text", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "text", "numeric", "text", 
+"text", "text", "text", "text", "text", 
+"text", "numeric", "text", "numeric", 
+"text", "text", "text", "numeric", 
+"text", "text", "text", "text", "text", 
+"text", "text", "text", "text", "text", 
+"text", "text", "numeric", "numeric", 
+"text", "numeric", "text", "text", 
+"text", "text", "text", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "text", "text", "text", 
+"text", "text", "text", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "numeric", "text", "text", 
+"numeric", "numeric", "numeric", 
+"numeric", "numeric", "numeric", 
+"numeric", "numeric", "text"))
+
+```
+
+# Creating final uncorrupted full dataset
+
+There are still some duplicated patients we need to remove
+
+```{r}
+library(dplyr)
+library(plyr)
+#In the plyr package there is a function rbind.fill that will merge data.frames and introduce NA for empty cells
+
+#the original dataset needs to be filtered until the next one is starting.
+STS_All_Status_Uni_Jan_2008_Jun_2011<-subset(STS_All_Status_Uni, format(as.Date(Surgery_Date))<='2011-06-31')
+
+
+STS_full_dataset<-rbind.fill(STS_All_Status_Uni_Jan_2008_Jun_2011, STS_2_73_July_2011_Jun_2014,STS_2_81_July_2014_June_2017)
+
+#formating dates properly for the left join
+#to be runned only the first time
+STS_full_dataset$Surgery_Date<-format(STS_full_dataset$Surgery_Date, "%Y-%m-%d")
+data_superficial_wound_270_281_July2011_Jun_2014$Surgery_Date<-format(data_superficial_wound_270_281_July2011_Jun_2014$Surgery_Date, "%Y-%m-%d")
+data_superficial_wound_270_281_July2014_Dec_2016$Surgery_Date<-format(data_superficial_wound_270_281_July2014_Dec_2016$Surgery_Date, "%Y-%m-%d")
+
+#Cleaning PostOpSternalSuperficialInfect in data_superficial_wound_270_281_July2011_Jun_2014
+data_superficial_wound_270_281_July2011_Jun_2014$PostOpSternalSuperficialInfect[is.na(data_superficial_wound_270_281_July2011_Jun_2014$PostOpSternalSuperficialInfect)]<-0
+data_superficial_wound_270_281_July2011_Jun_2014$PostOpSternalSuperficialInfect[data_superficial_wound_270_281_July2011_Jun_2014$PostOpSternalSuperficialInfect=='No']<-0
+data_superficial_wound_270_281_July2011_Jun_2014$PostOpSternalSuperficialInfect[data_superficial_wound_270_281_July2011_Jun_2014$PostOpSternalSuperficialInfect=='Yes']<-1
+
+#Cleaning PostOpSternalSuperficialInfect in data_superficial_wound_270_281_July2014_Dec_2016
+
+data_superficial_wound_270_281_July2014_Dec_2016$PostOpSternalSuperficialInfect[is.na(data_superficial_wound_270_281_July2014_Dec_2016$PostOpSternalSuperficialInfect)]<-0
+data_superficial_wound_270_281_July2014_Dec_2016$PostOpSternalSuperficialInfect[data_superficial_wound_270_281_July2014_Dec_2016$PostOpSternalSuperficialInfect=='No']<-0
+data_superficial_wound_270_281_July2014_Dec_2016$PostOpSternalSuperficialInfect[data_superficial_wound_270_281_July2014_Dec_2016$PostOpSternalSuperficialInfect=='Yes, within 30 days of procedure']<-1
+
+#performing left joins with the datasets containing wounds info.
+STS_full_dataset<-left_join(STS_full_dataset, subset(data_superficial_wound_270_281_July2011_Jun_2014,
+select = c("Surgery_Date","Patient_ID","PostOpSternalSuperficialInfect","PostOpSternalMediastinitis","Infect_Thoracotomy","Infect_Leg")), 
+                            by=c("Surgery_Date","Patient_ID"))
+
+STS_full_dataset<-left_join(STS_full_dataset,  subset(data_superficial_wound_270_281_July2014_Dec_2016,
+select = c("Surgery_Date","Patient_ID","PostOpSternalSuperficialInfect","PostOpCannulationSite","PostOpConduitHarvest")),
+                            by=c("Surgery_Date","Patient_ID"))
+
+
+#Formating dates
+
+STS_full_dataset$DateOfDeath<-as.Date(STS_full_dataset$DateOfDeath, "%d-%B-%y")
+STS_full_dataset$Surgery_Date<-as.Date(STS_full_dataset$Surgery_Date, "%Y-%m-%d")
+STS_full_dataset$Admission_Date<-as.Date(STS_full_dataset$Admission_Date, "%Y-%m-%d")
+STS_full_dataset$Discharge_Date<-as.Date(STS_full_dataset$Discharge_Date, "%Y-%m-%d")
+
+write.table(STS_full_dataset,'STS_full_dataset.txt')
+view(dfSummary(STS_full_dataset))
+
+#AIMS dataset goes up to June 2016
+STS_full_dataset_2008_2016<-subset(STS_full_dataset, format(as.Date(Surgery_Date))<='2016-06-31')
+
+
+
+
+```
+
+
+
+ 
+# Removing duplications
+
+There are still some duplicated patients we need to remove
+
+```{r}
+STS_full_dataset_2008_2016 <- STS_full_dataset_2008_2016[ ! rownames(STS_full_dataset_2008_2016) %in% 
+                which( duplicated(STS_full_dataset_2008_2016$Patient_ID)), ]
+```
+
+
+# STS
+
+## Columns removing
+
+```{r}
+#some columns are causing problems, we remove them for the final dataset
+#STS_full_dataset_2008_2016$actualsurgery<-NULL
+STS_full_dataset_2008_2016$Comments<-NULL
+
+#we remove columns we don't need
+STS_full_dataset_2008_2016$morbmort<-NULL
+STS_full_dataset_2008_2016$morbmortbinary<-NULL
+STS_full_dataset_2008_2016$Surgery_Type_Code<-NULL
+# STS_full_dataset_2008_2016$Surgery_Type_Descript<-NULL
+STS_full_dataset_2008_2016$Num_Distals<-NULL
+
+#some .bin columns might be incomplete so we remove them all
+BINcolumns<-grep("bin", names(STS_full_dataset_2008_2016), value = TRUE)
+
+for (name in names(STS_full_dataset_2008_2016)){
+if (name %in%  BINcolumns){
+  STS_full_dataset_2008_2016[name]<-NULL
+  }
+  
+}
+
+
+write.csv(STS_full_dataset_2008_2016,'STS_full_dataset_2008_2016.csv')
+```
+
+STS
+
+## Filtering STS dataset
+
+```{r}
+#we exclude those patients not in our study Category and status
+library(dplyr)
+STS_filtered<-STS_full_dataset_2008_2016 %>%
+#filter(grepl('CAB',Category)) %>%
+filter(!grepl('Cancelled case',Category)) %>%
+filter(grepl('Urgen|Elective', Status))
+
+```
+
+
+
+## Data Mapping STS dataset
+
+### Exposures
+
+```{r}
+#we merge CAB categories
+
+#Combine CABG and CABG +Other,
+# Combine VALVE and VALVE + other
+# Combine CABG +Valve and CABG+Valve+other
+
+#Cleaning Diabetes
+STS_filtered$Diabetes[is.na(STS_filtered$Diabetes)]<-0
+STS_filtered$Diabetes[STS_filtered$Diabetes=='']<-0
+STS_filtered$Diabetes[STS_filtered$Diabetes=='No']<-0
+STS_filtered$Diabetes[STS_filtered$Diabetes=='Yes']<-1
+
+#Cleaning RFDyslipidemia
+STS_filtered$RFDyslipidemia[is.na(STS_filtered$RFDyslipidemia)]<-0
+STS_filtered$RFDyslipidemia[STS_filtered$RFDyslipidemia=='']<-0
+STS_filtered$RFDyslipidemia[STS_filtered$RFDyslipidemia=='No']<-0
+STS_filtered$RFDyslipidemia[STS_filtered$RFDyslipidemia=='Unknown']<-0
+STS_filtered$RFDyslipidemia[STS_filtered$RFDyslipidemia=='Yes']<-1
+
+#Cleaning ChronicLungDisease
+STS_filtered$ChronicLungDisease[is.na(STS_filtered$ChronicLungDisease)]<-0
+STS_filtered$ChronicLungDisease[STS_filtered$ChronicLungDisease=='Lung disease documen']<-1
+STS_filtered$ChronicLungDisease[STS_filtered$ChronicLungDisease=='Mild']<-1             
+STS_filtered$ChronicLungDisease[STS_filtered$ChronicLungDisease=='Moderate']<-1
+STS_filtered$ChronicLungDisease[STS_filtered$ChronicLungDisease=='Severe']<-1
+STS_filtered$ChronicLungDisease[STS_filtered$ChronicLungDisease=='No']<-0
+STS_filtered$ChronicLungDisease[STS_filtered$ChronicLungDisease=='']<-0 
+STS_filtered$ChronicLungDisease[STS_filtered$ChronicLungDisease=='Unknown']<-0
+
+#Cleaning Dialysis
+STS_filtered$Dialysis[STS_filtered$Dialysis=='No']<-0
+STS_filtered$Dialysis[STS_filtered$Dialysis=='']<-0
+STS_filtered$Dialysis[STS_filtered$Dialysis=='Yes']<-1
+STS_filtered$Dialysis[is.na(STS_filtered$Dialysis)]<-0
+
+#Cleaning PreOpMedBetaBlockers
+STS_filtered$PreOpMedBetaBlockers[is.na(STS_filtered$PreOpMedBetaBlockers)]<-0
+STS_filtered$PreOpMedBetaBlockers[STS_filtered$PreOpMedBetaBlockers=='']<-0
+STS_filtered$PreOpMedBetaBlockers[STS_filtered$PreOpMedBetaBlockers=='Contraindicated']<-0
+STS_filtered$PreOpMedBetaBlockers[STS_filtered$PreOpMedBetaBlockers=='Contraindicated / 0t Indicated']<-0
+STS_filtered$PreOpMedBetaBlockers[STS_filtered$PreOpMedBetaBlockers=='Contraindicated / Not Indicated']<-0
+STS_filtered$PreOpMedBetaBlockers[STS_filtered$PreOpMedBetaBlockers=='No']<-0
+STS_filtered$PreOpMedBetaBlockers[STS_filtered$PreOpMedBetaBlockers=='']<-0
+STS_filtered$PreOpMedBetaBlockers[STS_filtered$PreOpMedBetaBlockers=='Yes']<-1
+STS_filtered$PreOpMedBetaBlockers<-as.factor(STS_filtered$PreOpMedBetaBlockers)
+
+
+#Cleaning PreOpMedInotropes
+STS_filtered$PreOpMedInotropes[is.na(STS_filtered$PreOpMedInotropes)]<-0
+STS_filtered$PreOpMedInotropes[STS_filtered$PreOpMedInotropes=='']<-0
+STS_filtered$PreOpMedInotropes[STS_filtered$PreOpMedInotropes=='Contraindicated']<-0
+STS_filtered$PreOpMedInotropes[STS_filtered$PreOpMedInotropes=='Contraindicated / 0t Indicated']<-0
+STS_filtered$PreOpMedInotropes[STS_filtered$PreOpMedInotropes=='Contraindicated / Not Indicated']<-0
+STS_filtered$PreOpMedInotropes[STS_filtered$PreOpMedInotropes=='No']<-0
+STS_filtered$PreOpMedInotropes[STS_filtered$PreOpMedInotropes=='Yes']<-1
+STS_filtered$PreOpMedInotropes<-as.factor(STS_filtered$PreOpMedInotropes)
+
+#Cleaning PreOpMedSteroids
+STS_filtered$PreOpMedSteroids[is.na(STS_filtered$PreOpMedSteroids)]<-0
+STS_filtered$PreOpMedSteroids[STS_filtered$PreOpMedSteroids=='']<-0
+STS_filtered$PreOpMedSteroids[STS_filtered$PreOpMedSteroids=='Contraindicated']<-0
+STS_filtered$PreOpMedSteroids[STS_filtered$PreOpMedSteroids=='Contraindicated / 0t Indicated']<-0
+STS_filtered$PreOpMedSteroids[STS_filtered$PreOpMedSteroids=='Contraindicated / Not Indicated']<-0
+STS_filtered$PreOpMedSteroids[STS_filtered$PreOpMedSteroids=='No']<-0
+STS_filtered$PreOpMedSteroids[STS_filtered$PreOpMedSteroids=='Yes']<-1
+STS_filtered$PreOpMedSteroids<-as.factor(STS_filtered$PreOpMedSteroids)
+
+#Cleaning PreOpMedAspirin
+STS_filtered$PreOpMedAspirin[is.na(STS_filtered$PreOpMedAspirin)]<-0
+STS_filtered$PreOpMedAspirin[STS_filtered$PreOpMedAspirin=='']<-0
+STS_filtered$PreOpMedAspirin[STS_filtered$PreOpMedAspirin=='Contraindicated']<-0
+STS_filtered$PreOpMedAspirin[STS_filtered$PreOpMedAspirin=='Contraindicated / 0t Indicated']<-0
+STS_filtered$PreOpMedAspirin[STS_filtered$PreOpMedAspirin=='Contraindicated / Not Indicated']<-0
+STS_filtered$PreOpMedAspirin[STS_filtered$PreOpMedAspirin=='No']<-0
+STS_filtered$PreOpMedAspirin[STS_filtered$PreOpMedAspirin=='Yes']<-1
+
+#Cleaning PreOpMedLipidLowering 
+# AKA statins
+STS_filtered$PreOpMedLipidLowering[is.na(STS_filtered$PreOpMedLipidLowering)]<-0
+STS_filtered$PreOpMedLipidLowering[STS_filtered$PreOpMedLipidLowering=='Contraindicated']<-0
+STS_filtered$PreOpMedLipidLowering[STS_filtered$PreOpMedLipidLowering=='Contraindicated / 0t Indicated']<-0
+STS_filtered$PreOpMedLipidLowering[STS_filtered$PreOpMedLipidLowering=='Contraindicated / Not Indicated']<-0
+STS_filtered$PreOpMedLipidLowering[STS_filtered$PreOpMedLipidLowering=='No']<-0
+STS_filtered$PreOpMedLipidLowering[STS_filtered$PreOpMedLipidLowering=='Yes']<-1
+STS_filtered$PreOpMedLipidLowering[STS_filtered$PreOpMedLipidLowering=='Unknown']<-0
+STS_filtered$PreOpMedLipidLowering[STS_filtered$PreOpMedLipidLowering=='']<-0
+STS_filtered$PreOpMedLipidLowering<-as.factor(STS_filtered$PreOpMedLipidLowering)
+
+#Cleaning TobaccoUse
+STS_filtered$TobaccoUse[is.na(STS_filtered$TobaccoUse)]<-0
+STS_filtered$TobaccoUse[STS_filtered$TobaccoUse=='']<- 0
+STS_filtered$TobaccoUse<-as.character(STS_filtered$TobaccoUse)
+STS_filtered$TobaccoUse[STS_filtered$TobaccoUse=='Current every day smoker'|
+STS_filtered$TobaccoUse=='Current some day smoker'|
+STS_filtered$TobaccoUse=='Former smoker' |
+STS_filtered$TobaccoUse=='Smoker, current status (frequency) unknown']<- 1
+STS_filtered$TobaccoUse[STS_filtered$TobaccoUse=='Never smoker']<- 0
+STS_filtered$TobaccoUse[STS_filtered$TobaccoUse=='Smoking status unknown']<-0
+
+#Cleaning CHF
+STS_filtered$CHF[is.na(STS_filtered$CHF)]<-0
+STS_filtered$CHF[STS_filtered$CHF=='']<-0
+STS_filtered$CHF[STS_filtered$CHF=='No']<-0
+STS_filtered$CHF[STS_filtered$CHF=='Yes']<-1
+
+#Cleaning HeartFailure2wks
+STS_filtered$HeartFailure2wks[is.na(STS_filtered$HeartFailure2wks)]<-0
+STS_filtered$HeartFailure2wks[STS_filtered$HeartFailure2wks=='']<-0
+STS_filtered$HeartFailure2wks[STS_filtered$HeartFailure2wks=='No']<-0
+STS_filtered$HeartFailure2wks[STS_filtered$HeartFailure2wks=='Yes']<-1
+
+#Cleaning Hypertension
+STS_filtered$Hypertension[is.na(STS_filtered$Hypertension)]<-0
+STS_filtered$Hypertension[STS_filtered$Hypertension=='']<-0
+STS_filtered$Hypertension[STS_filtered$Hypertension=='No']<-0
+STS_filtered$Hypertension[STS_filtered$Hypertension=='Yes']<-1
+
+#Cleaning RFHypertension
+STS_filtered$RFHypertension[is.na(STS_filtered$RFHypertension)]<-0
+STS_filtered$RFHypertension[STS_filtered$RFHypertension=='']<-0
+STS_filtered$RFHypertension[STS_filtered$RFHypertension=='Unknown']<-0
+STS_filtered$RFHypertension[STS_filtered$RFHypertension=='No']<-0
+STS_filtered$RFHypertension[STS_filtered$RFHypertension=='Yes']<-1
+
+#Cleaning PreviousMI 
+STS_filtered$PreviousMI[is.na(STS_filtered$PreviousMI)]<-0
+STS_filtered$PreviousMI[STS_filtered$PreviousMI=='']<-0
+STS_filtered$PreviousMI[STS_filtered$PreviousMI=='No']<-0
+STS_filtered$PreviousMI[STS_filtered$PreviousMI=='Yes']<-1
+
+#Cleaning PriorMI 
+STS_filtered$PriorMI[is.na(STS_filtered$PriorMI)]<-0
+STS_filtered$PriorMI[STS_filtered$PriorMI=='']<-0
+STS_filtered$PriorMI[STS_filtered$PriorMI=='No']<-0
+STS_filtered$PriorMI[STS_filtered$PriorMI=='Yes']<-1
+
+#Drugs
+
+#Cleaning PreOpMedACE_ARBInhibitors
+STS_filtered$PreOpMedACE_ARBInhibitors[STS_filtered$PreOpMedACE_ARBInhibitors=='Contraindicated']<-0
+STS_filtered$PreOpMedACE_ARBInhibitors[STS_filtered$PreOpMedACE_ARBInhibitors=='']<-0
+STS_filtered$PreOpMedACE_ARBInhibitors[STS_filtered$PreOpMedACE_ARBInhibitors=='Contraindicated / 0t Indicated']<-0
+STS_filtered$PreOpMedACE_ARBInhibitors[STS_filtered$PreOpMedACE_ARBInhibitors=='Contraindicated / Not Indicated']<-0
+STS_filtered$PreOpMedACE_ARBInhibitors[STS_filtered$PreOpMedACE_ARBInhibitors=='No']<-0
+STS_filtered$PreOpMedACE_ARBInhibitors[STS_filtered$PreOpMedACE_ARBInhibitors=='Yes']<-1
+STS_filtered$PreOpMedACE_ARBInhibitors<-as.factor(STS_filtered$PreOpMedACE_ARBInhibitors)
+STS_filtered$PreOpMedACE_ARBInhibitors[is.na(STS_filtered$PreOpMedACE_ARBInhibitors)]<-0
+
+#Cleaning PreOpMedACEIARBI48hrs
+STS_filtered$PreOpMedACEIARBI48hrs[STS_filtered$PreOpMedACEIARBI48hrs=='Contraindicated']<-0
+STS_filtered$PreOpMedACEIARBI48hrs[STS_filtered$PreOpMedACEIARBI48hrs=='']<-0
+STS_filtered$PreOpMedACEIARBI48hrs[STS_filtered$PreOpMedACEIARBI48hrs=='No']<-0
+STS_filtered$PreOpMedACEIARBI48hrs[STS_filtered$PreOpMedACEIARBI48hrs=='Yes']<-1
+STS_filtered$PreOpMedACEIARBI48hrs[is.na(STS_filtered$PreOpMedACEIARBI48hrs)]<-0
+STS_filtered$PreOpMedACEIARBI48hrs<-as.factor(STS_filtered$PreOpMedACEIARBI48hrs)
+
+```
+
+###Outcomes
+```{r}
+
+#Cleaning Reop_Bleeding
+STS_filtered$Reop_Bleeding[is.na(STS_filtered$Reop_Bleeding)]<-0
+
+#Cleaning Infect_Sternum_Deep
+STS_filtered$Infect_Sternum_Deep[is.na(STS_filtered$Infect_Sternum_Deep)]<-0
+STS_filtered$Infect_Sternum_Deep[STS_filtered$Infect_Sternum_Deep=='']<-0
+STS_filtered$Infect_Sternum_Deep[STS_filtered$Infect_Sternum_Deep=='No']<-0
+STS_filtered$Infect_Sternum_Deep[STS_filtered$Infect_Sternum_Deep=='Yes']<-1
+
+#Cleaning PostOpSternalMediastinitis
+STS_filtered$PostOpSternalMediastinitis[is.na(STS_filtered$PostOpSternalMediastinitis)]<-0
+STS_filtered$PostOpSternalMediastinitis[STS_filtered$PostOpSternalMediastinitis=='']<-0
+STS_filtered$PostOpSternalMediastinitis[STS_filtered$PostOpSternalMediastinitis=='No']<-0
+STS_filtered$PostOpSternalMediastinitis[STS_filtered$PostOpSternalMediastinitis=='Yes']<-1
+
+#Cleaning Infect_Thoracotomy
+STS_filtered$Infect_Thoracotomy[is.na(STS_filtered$Infect_Thoracotomy)]<-0
+STS_filtered$Infect_Thoracotomy[STS_filtered$Infect_Thoracotomy=='']<-0
+STS_filtered$Infect_Thoracotomy[STS_filtered$Infect_Thoracotomy=='No']<-0
+STS_filtered$Infect_Thoracotomy[STS_filtered$Infect_Thoracotomy=='Yes']<-1
+
+#Cleaning Infect_Leg
+STS_filtered$Infect_Leg[is.na(STS_filtered$Infect_Leg)]<-0
+STS_filtered$Infect_Leg[STS_filtered$Infect_Leg=='']<-0
+STS_filtered$Infect_Leg[STS_filtered$Infect_Leg=='No']<-0
+STS_filtered$Infect_Leg[STS_filtered$Infect_Leg=='Yes']<-1
+
+#Cleaning PostOpSternalSuperficialInfect.x
+STS_filtered$PostOpSternalSuperficialInfect.x[is.na(STS_filtered$PostOpSternalSuperficialInfect.x)]<-0
+STS_filtered$PostOpSternalSuperficialInfect.x[STS_filtered$PostOpSternalSuperficialInfect.x=='']<-0
+STS_filtered$PostOpSternalSuperficialInfect.x[STS_filtered$PostOpSternalSuperficialInfect.x=='No']<-0
+STS_filtered$PostOpSternalSuperficialInfect.x[STS_filtered$PostOpSternalSuperficialInfect.x=='Yes']<-1
+
+#Cleaning PostOpSternalSuperficialInfect.y
+STS_filtered$PostOpSternalSuperficialInfect.y[is.na(STS_filtered$PostOpSternalSuperficialInfect.y)]<-0
+STS_filtered$PostOpSternalSuperficialInfect.y[STS_filtered$PostOpSternalSuperficialInfect.y=='']<-0
+STS_filtered$PostOpSternalSuperficialInfect.y[STS_filtered$PostOpSternalSuperficialInfect.y=='No']<-0
+STS_filtered$PostOpSternalSuperficialInfect.y[STS_filtered$PostOpSternalSuperficialInfect.y=='Yes']<-1
+STS_filtered$PostOpSternalSuperficialInfect.y<-as.numeric(STS_filtered$PostOpSternalSuperficialInfect.y)
+
+
+#Cleaning PostOpDeepSternalMediastin
+STS_filtered$PostOpDeepSternalMediastin[is.na(STS_filtered$PostOpDeepSternalMediastin)]<-0
+STS_filtered$PostOpDeepSternalMediastin[STS_filtered$PostOpDeepSternalMediastin=='']<-0
+STS_filtered$PostOpDeepSternalMediastin[STS_filtered$PostOpDeepSternalMediastin=='No']<-0
+STS_filtered$PostOpDeepSternalMediastin[STS_filtered$PostOpDeepSternalMediastin=='Yes']<-1
+STS_filtered$PostOpDeepSternalMediastin<-as.numeric(STS_filtered$PostOpDeepSternalMediastin)
+
+
+#Cleaning PostOpCannulationSite
+STS_filtered$PostOpCannulationSite[is.na(STS_filtered$PostOpCannulationSite)]<-0
+STS_filtered$PostOpCannulationSite[STS_filtered$PostOpCannulationSite=='']<-0
+STS_filtered$PostOpCannulationSite[STS_filtered$PostOpCannulationSite=='No']<-0
+STS_filtered$PostOpCannulationSite[STS_filtered$PostOpCannulationSite=='Yes']<-1
+STS_filtered$PostOpCannulationSite<-as.numeric(STS_filtered$PostOpCannulationSite)
+
+#Cleaning PostOpConduitHarvest
+STS_filtered$PostOpConduitHarvest[is.na(STS_filtered$PostOpConduitHarvest)]<-0
+STS_filtered$PostOpConduitHarvest[STS_filtered$PostOpConduitHarvest=='']<-0
+STS_filtered$PostOpConduitHarvest[STS_filtered$PostOpConduitHarvest=='No']<-0
+STS_filtered$PostOpConduitHarvest[STS_filtered$PostOpConduitHarvest=='Yes, within 30 days of procedure']<-1
+STS_filtered$PostOpConduitHarvest<-as.numeric(STS_filtered$PostOpConduitHarvest)
+
+#Cleaning Neuro_Stroke_Permanent
+STS_filtered$Neuro_Stroke_Permanent[is.na(STS_filtered$Neuro_Stroke_Permanent)]<-0
+STS_filtered$Neuro_Stroke_Permanent[STS_filtered$Neuro_Stroke_Permanent=='']<-0
+STS_filtered$Neuro_Stroke_Permanent[STS_filtered$Neuro_Stroke_Permanent=='No']<-0
+STS_filtered$Neuro_Stroke_Permanent[STS_filtered$Neuro_Stroke_Permanent=='Yes']<-1
+
+#Cleaning PostOpNeuroStrokePermanent
+STS_filtered$PostOpNeuroStrokePermanent[is.na(STS_filtered$PostOpNeuroStrokePermanent)]<-0
+STS_filtered$PostOpNeuroStrokePermanent[STS_filtered$PostOpNeuroStrokePermanent=='']<-0
+STS_filtered$PostOpNeuroStrokePermanent[STS_filtered$PostOpNeuroStrokePermanent=='No']<-0
+STS_filtered$PostOpNeuroStrokePermanent[STS_filtered$PostOpNeuroStrokePermanent=='Yes, embolic']<-1
+STS_filtered$PostOpNeuroStrokePermanent[STS_filtered$PostOpNeuroStrokePermanent=='Yes, hemorrhagic']<-1
+
+#Cleaning Pulm_Pneumonia
+STS_filtered$Pulm_Pneumonia[is.na(STS_filtered$Pulm_Pneumonia)]<-0
+STS_filtered$Pulm_Pneumonia[STS_filtered$Pulm_Pneumonia=='']<-0
+
+#Cleaning Renal_Failure
+STS_filtered$Renal_Failure[is.na(STS_filtered$Renal_Failure)]<-0
+STS_filtered$Renal_Failure[STS_filtered$Renal_Failure=='']<-0
+
+#Cleaning Oth_Tamponade
+STS_filtered$Oth_Tamponade[is.na(STS_filtered$Oth_Tamponade)]<-0
+STS_filtered$Oth_Tamponade[STS_filtered$Oth_Tamponade=='']<-0
+
+
+#Cleaning Death
+STS_filtered$Death[is.na(STS_filtered$Death)]<-0
+STS_filtered$Death[STS_filtered$Death=='']<-0
+
+
+#Cleaning Oth_AFib
+STS_filtered$Oth_AFib[is.na(STS_filtered$Oth_AFib)]<-0
+STS_filtered$Oth_AFib[STS_filtered$Oth_AFib=='']<-0
+
+
+listVars<-c("Gender",
+  "Age",
+  "Category",
+  
+  #Background diseases
+  "Diabetes",
+  "RFDyslipidemia",
+  "Hypertension_final",
+  "Smoking",
+  "Congestive_Heart_Failure",
+  "Previous_myocardial_infarction",
+  "ChronicLungDisease",
+  "Dialysis",
+  
+  #Preoperative medications
+  "PreOpMedBetaBlockers",
+  "PreOpMedACEI_or_ARBs",
+  "PreOpMedInotropes",
+  "PreOpMedSteroids",
+  "PreOpMedAspirin",
+  "PreOpMedLipidLowering"
+)
+
+# # There are 9 patients always missing baseline variables we are going to remove them
+# patientsmissingbaselinevars<-STS_filtered$Patient_ID[is.na(STS_filtered$Diabetes)]
+# 
+# STS_filtered<-STS_filtered[!STS_filtered$Patient_ID %in% patientsmissingbaselinevars, ]
+
+# #we corect missing values
+# #STS columns NA=NULL, In the rest NA=0
+# 
+# #we are going to store the columns id which contains the string 'STS' becasuse in these columns NA means unknown
+# STScolumns<-grep("STS", names(STS_filtered), value = TRUE)
+# #other Columns where NA means unknown
+# STScolumns<-append(STScolumns, c('Diabetes', 'PreviousMI', 
+#   
+#   "PreOpMedBetaBlockers",
+#   "PreOpMedACE_ARBInhibitors",
+#   "PreOpMedInotropes",
+#   "PreOpMedSteroids",
+#   "PreOpMedAspirin",
+#   "PreOpMedLipidLowering"))
+# STScolumns<-which(names(STS_filtered) %in% (STScolumns))
+# 
+# #Columns where NA means unknown
+# 
+# STS_filtered$Diabetes[is.na(STS_filtered$Diabetes)]<-'Unknown'
+# STS_filtered$ChronicLungDisease[is.na(STS_filtered$ChronicLungDisease)]<-'Unknown'
+# STS_filtered$TobaccoUse[is.na(STS_filtered$TobaccoUse)]<-'Smoking status unknown'
+# STS_filtered$RFDyslipidemia[is.na(STS_filtered$RFDyslipidemia)]<-'Unknown'
+
+
+
+#For those columns where NA doesn't mean unknown replace NA with 0
+
+# for (i in 1:length(colnames(STS_filtered))){
+#   if (i %in% STScolumns){
+#     
+#   }
+#   else(STS_filtered[,i][is.na(STS_filtered[,i])] <- 0)
+# }
+
+#convert character columns to factors
+#charactercolumns<-sapply(STS_filtered, is.character)
+
+#STS_filtered[charactercolumns] <- lapply(STS_filtered[charactercolumns], factor)
+```
+
+# Converting columns to the right format
+
+```{r}
+STS_filtered$PreOpMedACE_ARBInhibitors<-as.character(STS_filtered$PreOpMedACE_ARBInhibitors)
+STS_filtered$PreOpMedBetaBlockers<-as.character(STS_filtered$PreOpMedBetaBlockers)
+STS_filtered$PreOpMedLipidLowering<-as.character(STS_filtered$PreOpMedLipidLowering)
+```
+
+
+# Creating new columns with constant data for the period 2008-2016
+
+```{r}
+#AIMS dataset goes up to June 2016
+
+#Creating Stroke column
+
+STS_filtered['Stroke']<-NA
+
+STS_filtered$Stroke<-if_else(
+  format(as.Date(STS_filtered$Surgery_Date))<='2014-06-31',
+  STS_filtered$Neuro_Stroke_Permanent ,
+  STS_filtered$PostOpNeuroStrokePermanent
+)
+
+STS_filtered$Stroke[is.na(STS_filtered$Stroke)]<-0
+
+#Creating Smoking column
+
+STS_filtered['Smoking']<-NA
+
+STS_filtered$Smoking<-if_else(
+  format(as.Date(STS_filtered$Surgery_Date))<='2014-06-31',
+  STS_filtered$RFCurrentRecentCigarette  ,
+  as.integer(STS_filtered$TobaccoUse)
+)
+STS_filtered$Smoking[is.na(STS_filtered$Smoking)]<-0
+
+#Creating Congestive_Heart_Failure column
+
+
+STS_filtered['Congestive_Heart_Failure']<-NA
+
+STS_filtered$Congestive_Heart_Failure<-if_else(
+  format(as.Date(STS_filtered$Surgery_Date))<='2014-06-31',
+  STS_filtered$CHF   ,
+  STS_filtered$HeartFailure2wks
+)
+STS_filtered$Congestive_Heart_Failure[is.na(STS_filtered$Congestive_Heart_Failure)]<-0
+#Creating Hypertension_final column
+
+
+
+STS_filtered['Hypertension_final']<-NA
+
+STS_filtered$Hypertension_final<-if_else(
+  format(as.Date(STS_filtered$Surgery_Date))<='2014-06-31',
+  STS_filtered$Hypertension    ,
+  STS_filtered$RFHypertension 
+)
+STS_filtered$Hypertension_final[is.na(STS_filtered$Hypertension_final)]<-0
+#Creating Previous_myocardial_infarction column
+
+
+
+
+STS_filtered['Previous_myocardial_infarction']<-NA
+
+STS_filtered$Previous_myocardial_infarction<-if_else(
+  format(as.Date(STS_filtered$Surgery_Date))<='2014-06-31',
+  STS_filtered$PreviousMI     ,
+  STS_filtered$PriorMI 
+)
+STS_filtered$Previous_myocardial_infarction[is.na(STS_filtered$Previous_myocardial_infarction)]<-0
+
+#Creating PreOpMedACEI_or_ARBs column
+
+
+
+STS_filtered['PreOpMedACEI_or_ARBs']<-NA
+
+STS_filtered$PreOpMedACEI_or_ARBs<-if_else(
+  format(as.Date(STS_filtered$Surgery_Date))<='2011-06-31',
+  STS_filtered$PreOpMedACE_ARBInhibitors     ,
+  as.character(STS_filtered$PreOpMedACEIARBI48hrs) 
+)
+STS_filtered$PreOpMedACEI_or_ARBs[is.na(STS_filtered$PreOpMedACEI_or_ARBs)]<-0
+
+#Creating Infection column
+
+# Post-Op-Sternal-Superficial Wound Infection
+# Short Name: CSternalSupInf
+
+#PostOpDeepSternalMediastin only contains data from 2014
+STS_filtered['Infection']<-NA
+
+STS_filtered$Infection<-if_else(
+format(as.Date(STS_filtered$Surgery_Date))<='2011-06-31',as.numeric(STS_filtered$Infect_Sternum_Deep) ,
+    if_else(
+    format(as.Date(STS_filtered$Surgery_Date))<='2014-06-31',
+    if_else(STS_filtered$PostOpSternalSuperficialInfect.x+STS_filtered$Infect_Thoracotomy+ STS_filtered$PostOpSternalMediastinitis>0,1,0)  ,
+    if_else(STS_filtered$PostOpSternalSuperficialInfect.y+STS_filtered$PostOpCannulationSite+ STS_filtered$PostOpConduitHarvest>0,1,0)
+)
+)
+
+STS_filtered$Infection[is.na(STS_filtered$Infection)]<-0
+
+#Cleaning
+#STS_filtered$Deep_Sternal_Infection[is.na(STS_filtered$Deep_Sternal_Infection)]<-0
+  
+```
+
+##Data Mapping STS new created columns
+```{r}
+#Cleaning Congestive_Heart_Failure
+STS_filtered$Congestive_Heart_Failure[is.na(STS_filtered$Congestive_Heart_Failure)]<-0
+STS_filtered$Congestive_Heart_Failure[STS_filtered$Congestive_Heart_Failure=='']<-0
+STS_filtered$Congestive_Heart_Failure[STS_filtered$Congestive_Heart_Failure=='Unknown']<-0
+
+
+#Cleaning Previous_myocardial_infarction
+STS_filtered$Previous_myocardial_infarction[is.na(STS_filtered$Previous_myocardial_infarction)]<-0
+STS_filtered$Previous_myocardial_infarction[STS_filtered$Previous_myocardial_infarction=='']<-0
+STS_filtered$Previous_myocardial_infarction[STS_filtered$Previous_myocardial_infarction=='Unknown']<-0
+
+
+```
+
+
+#Processing Outcomes
+
+```{r}
+
+#We remove Oth_AFib since it is too big compared to other outcomes hence our model would only be predicting it among all the others outcomes composing AnyMAE
+
+listOuts<-c("Reop_Bleeding","Infection","Stroke","Pulm_Pneumonia","Renal_Failure","Oth_Tamponade","Death")
+#all Outs need to be numeric
+for (name in names(STS_filtered[,listOuts])) {
+  print(name)
+STS_filtered[,name]<-as.integer(STS_filtered[,name])
+}
+STS_filtered$Stroke[is.na(STS_filtered$Stroke)]<-0
+
+```
+
+
+
+
+
+
+# Any Mayor Adverse Event Creation
+```{r}
+#We create an extra column in case any Mayor Adverse Event is ocuring during surgery
+
+#Those events are:
+# "Reop_Bleeding","Infection","Stroke","Pulm_Pneumonia","Renal_Failure","Oth_Tamponade"
+#,"Death"
+
+
+multi.fun <- function(x) {cbind(freq = table(x), percentage = round(prop.table(table(x))*100,2))}
+
+STS_filtered['Any_MAE']<-rowSums(STS_filtered[,listOuts])
+
+STS_filtered$Any_MAE<-ifelse(STS_filtered$Any_MAE==0,0,1)
+
+STS_filtered['Total_MAE']<-rowSums(STS_filtered[,listOuts])
+
+```
+
+#initial tests
+
+```{r}
+multi.fun <- function(x) {cbind(freq = table(x), percentage = round(prop.table(table(x))*100,2))}
+
+for (name in listVars){
+  print(name)
+print(multi.fun(STS_filtered[, name]))
+}
+
+# Check if there is any emtpy column for a certain year
+for (name in names(STS_filtered[,c(listOuts)])) {
+  for (year in 2008:2016){
+    filtereddata<-subset(STS_filtered, format(as.Date(Surgery_Date),"%Y")==year)
+  cat('\n')
+  cat(year)
+  cat('\n')
+  cat(name)
+  print(multi.fun(filtereddata[name]))
+# write(name,file="printingMissingDataColumns.txt",append=TRUE)
+# write(year,file="printingMissingDataColumns.txt",append=TRUE)
+# write("\n",file="printingMissingDataColumns.txt",append=TRUE)
+# write.table(tablesummary,file="printingMissingDataColumns.txt",append=TRUE,sep = "\t",quote = FALSE, row.names = FALSE)
+      }
+  
+    }
+
+
+  for (year in 2008:2016){
+    filtereddata<-subset(STS_filtered, format(as.Date(Surgery_Date),"%Y")==year)
+    cat('\n')
+    cat(year)
+    cat('\n')
+    print(multi.fun(filtereddata$Infection ))
+  }
+
+for (name in names(STS_filtered[,c(listVars)])) {
+  cat('\n')
+  cat(name)
+  print(multi.fun(STS_filtered[name]))
+  print(summary(STS_filtered[name]))
+# write(name,file="printingMissingDataColumns.txt",append=TRUE)
+# write(year,file="printingMissingDataColumns.txt",append=TRUE)
+# write("\n",file="printingMissingDataColumns.txt",append=TRUE)
+# write.table(tablesummary,file="printingMissingDataColumns.txt",append=TRUE,sep = "\t",quote = FALSE, row.names = FALSE)
+      }
+  
+
+```
+

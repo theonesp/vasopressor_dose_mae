@@ -1,0 +1,72 @@
+---
+title: "FINAL_JOIN and de-identification"
+author: "Miguel Angel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r}
+#Load the enviroment
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+
+```
+
+# FINAL LEFT JOIN
+
+## STS dataset with HPE columns dataset join
+
+```{r}
+library(dplyr)
+FinalHemodynamicsDataset<-inner_join(CasesofInterestDF, AllPeriodswith_AUT_AOT_and_AWI_DF)
+FinalHemodynamicsDataset$Surgery_Date<-as.Date(FinalHemodynamicsDataset$Surgery_Date, "%Y-%m-%d")
+```
+
+# Joining with AUC-related variables
+
+```{r}
+FinalHemodynamicsDataset<-inner_join(FinalHemodynamicsDataset,All_AUC65MAP_variables)
+```
+
+## STS and HPE dataset join with Anesthesiologists_all_yearsDF and Surgeons_all_yearsDF
+
+```{r}
+FinalHemodynamicsDataset<-left_join(FinalHemodynamicsDataset, Anesthesiologists_selection)
+#FinalHemodynamicsDataset<-left_join(FinalHemodynamicsDataset, Surgeons_all_yearsDF)
+
+```
+
+# Removing PHI
+
+```{r}
+#Remove Patient Identifier variables
+FinalHemodynamicsDataset$Patient_ID <- NULL
+FinalHemodynamicsDataset$First_Name <- NULL
+FinalHemodynamicsDataset$Last_Name <- NULL
+FinalHemodynamicsDataset$SS_Patient_ID <- NULL
+```
+
+# De-Identifying Anesthesiologists
+
+```{r}
+
+library(plyr)
+
+#Anesthesiologist
+FinalHemodynamicsDataset$Anesthesiologist<-as.character(FinalHemodynamicsDataset$Anesthesiologist)
+
+# code removed since it contained phi
+
+# We studied providers involved in at least 30 surgeries between 2008-2016
+```
+
+# Joining total pressors formula
+
+```{r}
+FinalHemodynamicsDataset<-inner_join(FinalHemodynamicsDataset, r_drugsinformula[,c("Case_Name","total_pressors_formula_mg")])
+```
+
+
+
+

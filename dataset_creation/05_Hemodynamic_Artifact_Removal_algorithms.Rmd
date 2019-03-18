@@ -1,0 +1,407 @@
+---
+title: "5_Hemodynamic_Artifact_Removal_algorithms and MAP recalculation"
+author: "Miguel Angel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+
+```{r}
+#Data load
+
+library(readr)
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+```
+
+After doing some research in the department, we found out ABP-Mean is being calculated using an integral directtly in the monitor, thus is our most reliable source; therefore, we are using the original ABP-Mean since it is more accurate than using a formula like _MAP = DBP + 1/3 ? (SBP - DBP)_.
+
+#Hemodynamic codes
+
+art_sys_codes<-c(8,9,10,11,12,13)
+
+The most numerous SBP code is 8: ABP-Systolic
+
+art_dias_codes<-c(14:19)
+
+The most numerous DBP code is 14: ABP-Diastolic
+
+art_mean_codes<-c(20:25)
+
+The most numerous MAP code is 20: ABP-Mean
+
+# Artifact Removed Datasets
+
+Remove artifacts using the following rules, in order: 
+
+(a) SBP (Systolic Blood Pressure) greater than or equal to 300 or SBP less than or equal to 20 mmhg.
+(b) SBP less than or equal to DBP + 5 mmhg.
+(c) DBP (Diastolic Blood Pressure) less than or equal to 5 mmhg or DBP greater than or equal to 225 mmhg.
+
+### 2008
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns08SPB<-subset(Vitalsigns08,Vitalsigns08$Code==8) 
+Vitalsigns08DBP<-subset(Vitalsigns08,Vitalsigns08$Code==14)
+Vitalsigns08MAP<-subset(Vitalsigns08,Vitalsigns08$Code==20)  
+Vitalsigns08j<-full_join(Vitalsigns08SPB,Vitalsigns08DBP,by=c('Case_Name','Time'))
+Vitalsigns08j<-full_join(Vitalsigns08j,Vitalsigns08MAP,by=c('Case_Name','Time'))
+Vitalsigns08j<-Vitalsigns08j[order(Vitalsigns08j$Case_Name,Vitalsigns08j$Time),]
+colnames(Vitalsigns08j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+
+
+#MAP Formula, not needed in the end.
+
+MAP <- function(SBP,DBP){
+ MAP<-DBP + 1/3 * (SBP - DBP)
+ roundMAP<-round(MAP,0)
+ return(roundMAP)
+}
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns08j$SBP[Vitalsigns08j$SBP >= 300]<-NA
+Vitalsigns08j$SBP[Vitalsigns08j$SBP<= 20]<-NA
+Vitalsigns08j$SBP[Vitalsigns08j$SBP<=  (Vitalsigns08j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns08j$DBP[Vitalsigns08j$DBP <=  5]<-NA
+Vitalsigns08j$DBP[Vitalsigns08j$DBP >=  255]<-NA
+
+#MAP artifact removal
+Vitalsigns08j$MAP[Vitalsigns08j$MAP <=  0]<-NA
+Vitalsigns08j$MAP[Vitalsigns08j$MAP >=  255]<-NA
+
+
+
+```
+
+### 2009
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns09SPB<-subset(Vitalsigns09,Vitalsigns09$Code==8) 
+Vitalsigns09DBP<-subset(Vitalsigns09,Vitalsigns09$Code==14)
+Vitalsigns09MAP<-subset(Vitalsigns09,Vitalsigns09$Code==20)  
+Vitalsigns09j<-full_join(Vitalsigns09SPB,Vitalsigns09DBP,by=c('Case_Name','Time'))
+Vitalsigns09j<-full_join(Vitalsigns09j,Vitalsigns09MAP,by=c('Case_Name','Time'))
+Vitalsigns09j<-Vitalsigns09j[order(Vitalsigns09j$Case_Name,Vitalsigns09j$Time),]
+colnames(Vitalsigns09j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns09j$SBP[Vitalsigns09j$SBP >= 300]<-NA
+Vitalsigns09j$SBP[Vitalsigns09j$SBP<=20]<-NA
+Vitalsigns09j$SBP[Vitalsigns09j$SBP<=(Vitalsigns09j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns09j$DBP[Vitalsigns09j$DBP <= 5]<-NA
+Vitalsigns09j$DBP[Vitalsigns09j$DBP >= 255]<-NA
+
+#MAP artifact removal
+Vitalsigns09j$MAP[Vitalsigns09j$MAP < 0]<-NA
+Vitalsigns09j$MAP[Vitalsigns09j$MAP >= 255]<-NA
+
+```
+
+
+### 2010
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns10SPB<-subset(Vitalsigns10,Vitalsigns10$Code==8) 
+Vitalsigns10DBP<-subset(Vitalsigns10,Vitalsigns10$Code==14)
+Vitalsigns10MAP<-subset(Vitalsigns10,Vitalsigns10$Code==20)  
+Vitalsigns10j<-full_join(Vitalsigns10SPB,Vitalsigns10DBP,by=c('Case_Name','Time'))
+Vitalsigns10j<-full_join(Vitalsigns10j,Vitalsigns10MAP,by=c('Case_Name','Time'))
+Vitalsigns10j<-Vitalsigns10j[order(Vitalsigns10j$Case_Name,Vitalsigns10j$Time),]
+colnames(Vitalsigns10j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns10j$SBP[Vitalsigns10j$SBP >= 300]<-NA
+Vitalsigns10j$SBP[Vitalsigns10j$SBP<=20]<-NA
+Vitalsigns10j$SBP[Vitalsigns10j$SBP<=(Vitalsigns10j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns10j$DBP[Vitalsigns10j$DBP <= 5]<-NA
+Vitalsigns10j$DBP[Vitalsigns10j$DBP >= 255]<-NA
+
+#MAP artifact removal
+Vitalsigns10j$MAP[Vitalsigns10j$MAP < 0]<-NA
+Vitalsigns10j$MAP[Vitalsigns10j$MAP >= 255]<-NA
+
+```
+
+### 2011
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns11SPB<-subset(Vitalsigns11,Vitalsigns11$Code==8) 
+Vitalsigns11DBP<-subset(Vitalsigns11,Vitalsigns11$Code==14)
+Vitalsigns11MAP<-subset(Vitalsigns11,Vitalsigns11$Code==20)  
+Vitalsigns11j<-full_join(Vitalsigns11SPB,Vitalsigns11DBP,by=c('Case_Name','Time'))
+Vitalsigns11j<-full_join(Vitalsigns11j,Vitalsigns11MAP,by=c('Case_Name','Time'))
+Vitalsigns11j<-Vitalsigns11j[order(Vitalsigns11j$Case_Name,Vitalsigns11j$Time),]
+colnames(Vitalsigns11j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns11j$SBP[Vitalsigns11j$SBP >= 300]<-NA
+Vitalsigns11j$SBP[Vitalsigns11j$SBP<=20]<-NA
+Vitalsigns11j$SBP[Vitalsigns11j$SBP<=(Vitalsigns11j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns11j$DBP[Vitalsigns11j$DBP <= 5]<-NA
+Vitalsigns11j$DBP[Vitalsigns11j$DBP >= 255]<-NA
+
+
+#MAP artifact removal
+Vitalsigns11j$MAP[Vitalsigns11j$MAP < 0]<-NA
+Vitalsigns11j$MAP[Vitalsigns11j$MAP >= 255]<-NA
+
+```
+
+### 2012
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns12SPB<-subset(Vitalsigns12,Vitalsigns12$Code==8) 
+Vitalsigns12DBP<-subset(Vitalsigns12,Vitalsigns12$Code==14)
+Vitalsigns12MAP<-subset(Vitalsigns12,Vitalsigns12$Code==20)  
+Vitalsigns12j<-full_join(Vitalsigns12SPB,Vitalsigns12DBP,by=c('Case_Name','Time'))
+Vitalsigns12j<-full_join(Vitalsigns12j,Vitalsigns12MAP,by=c('Case_Name','Time'))
+Vitalsigns12j<-Vitalsigns12j[order(Vitalsigns12j$Case_Name,Vitalsigns12j$Time),]
+colnames(Vitalsigns12j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns12j$SBP[Vitalsigns12j$SBP >= 300]<-NA
+Vitalsigns12j$SBP[Vitalsigns12j$SBP<=20]<-NA
+Vitalsigns12j$SBP[Vitalsigns12j$SBP<=(Vitalsigns12j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns12j$DBP[Vitalsigns12j$DBP <= 5]<-NA
+Vitalsigns12j$DBP[Vitalsigns12j$DBP >= 255]<-NA
+
+
+#MAP artifact removal
+Vitalsigns12j$MAP[Vitalsigns12j$MAP < 0]<-NA
+Vitalsigns12j$MAP[Vitalsigns12j$MAP >= 255]<-NA
+
+```
+
+### 2013
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns13SPB<-subset(Vitalsigns13,Vitalsigns13$Code==8) 
+Vitalsigns13DBP<-subset(Vitalsigns13,Vitalsigns13$Code==14)
+Vitalsigns13MAP<-subset(Vitalsigns13,Vitalsigns13$Code==20)  
+Vitalsigns13j<-full_join(Vitalsigns13SPB,Vitalsigns13DBP,by=c('Case_Name','Time'))
+Vitalsigns13j<-full_join(Vitalsigns13j,Vitalsigns13MAP,by=c('Case_Name','Time'))
+Vitalsigns13j<-Vitalsigns13j[order(Vitalsigns13j$Case_Name,Vitalsigns13j$Time),]
+colnames(Vitalsigns13j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns13j$SBP[Vitalsigns13j$SBP >= 300]<-NA
+Vitalsigns13j$SBP[Vitalsigns13j$SBP<=20]<-NA
+Vitalsigns13j$SBP[Vitalsigns13j$SBP<=(Vitalsigns13j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns13j$DBP[Vitalsigns13j$DBP <= 5]<-NA
+Vitalsigns13j$DBP[Vitalsigns13j$DBP >= 255]<-NA
+
+#MAP artifact removal
+Vitalsigns13j$MAP[Vitalsigns13j$MAP < 0]<-NA
+Vitalsigns13j$MAP[Vitalsigns13j$MAP >= 255]<-NA
+
+```
+
+### 2014
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns14SPB<-subset(Vitalsigns14,Vitalsigns14$Code==8) 
+Vitalsigns14DBP<-subset(Vitalsigns14,Vitalsigns14$Code==14)
+Vitalsigns14MAP<-subset(Vitalsigns14,Vitalsigns14$Code==20)  
+Vitalsigns14j<-full_join(Vitalsigns14SPB,Vitalsigns14DBP,by=c('Case_Name','Time'))
+Vitalsigns14j<-full_join(Vitalsigns14j,Vitalsigns14MAP,by=c('Case_Name','Time'))
+Vitalsigns14j<-Vitalsigns14j[order(Vitalsigns14j$Case_Name,Vitalsigns14j$Time),]
+colnames(Vitalsigns14j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns14j$SBP[Vitalsigns14j$SBP >= 300]<-NA
+Vitalsigns14j$SBP[Vitalsigns14j$SBP<=20]<-NA
+Vitalsigns14j$SBP[Vitalsigns14j$SBP<=(Vitalsigns14j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns14j$DBP[Vitalsigns14j$DBP <= 5]<-NA
+Vitalsigns14j$DBP[Vitalsigns14j$DBP >= 255]<-NA
+
+#MAP artifact removal
+Vitalsigns14j$MAP[Vitalsigns14j$MAP < 0]<-NA
+Vitalsigns14j$MAP[Vitalsigns14j$MAP >= 255]<-NA
+
+```
+
+### 2015
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns15SPB<-subset(Vitalsigns15,Vitalsigns15$Code==8) 
+Vitalsigns15DBP<-subset(Vitalsigns15,Vitalsigns15$Code==14)
+Vitalsigns15MAP<-subset(Vitalsigns15,Vitalsigns15$Code==20)  
+Vitalsigns15j<-full_join(Vitalsigns15SPB,Vitalsigns15DBP,by=c('Case_Name','Time'))
+Vitalsigns15j<-full_join(Vitalsigns15j,Vitalsigns15MAP,by=c('Case_Name','Time'))
+Vitalsigns15j<-Vitalsigns15j[order(Vitalsigns15j$Case_Name,Vitalsigns15j$Time),]
+colnames(Vitalsigns15j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns15j$SBP[Vitalsigns15j$SBP >= 300]<-NA
+Vitalsigns15j$SBP[Vitalsigns15j$SBP<=20]<-NA
+Vitalsigns15j$SBP[Vitalsigns15j$SBP<=(Vitalsigns15j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns15j$DBP[Vitalsigns15j$DBP <= 5]<-NA
+Vitalsigns15j$DBP[Vitalsigns15j$DBP >= 255]<-NA
+
+#MAP artifact removal
+Vitalsigns15j$MAP[Vitalsigns15j$MAP < 0]<-NA
+Vitalsigns15j$MAP[Vitalsigns15j$MAP >= 255]<-NA
+
+```
+
+### 2016
+
+####New datasets Creation
+
+```{r}
+library(dplyr)
+Vitalsigns16SPB<-subset(Vitalsigns16,Vitalsigns16$Code==8) 
+Vitalsigns16DBP<-subset(Vitalsigns16,Vitalsigns16$Code==14)
+Vitalsigns16MAP<-subset(Vitalsigns16,Vitalsigns16$Code==20)  
+Vitalsigns16j<-full_join(Vitalsigns16SPB,Vitalsigns16DBP,by=c('Case_Name','Time'))
+Vitalsigns16j<-full_join(Vitalsigns16j,Vitalsigns16MAP,by=c('Case_Name','Time'))
+Vitalsigns16j<-Vitalsigns16j[order(Vitalsigns16j$Case_Name,Vitalsigns16j$Time),]
+colnames(Vitalsigns16j)<-c("Index.SBP","Case_Name","Time","SBP","Code.SBP","Index.DBP","DBP","Code.DBP",
+                           "Index.MAP","MAP","Code.MAP")
+```
+
+#### Artifact Removal
+
+```{r}
+library(plotly)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+
+#SBP artifact removal
+Vitalsigns16j$SBP[Vitalsigns16j$SBP >= 300]<-NA
+Vitalsigns16j$SBP[Vitalsigns16j$SBP<=20]<-NA
+Vitalsigns16j$SBP[Vitalsigns16j$SBP<=(Vitalsigns16j$DBP+5)]<-NA
+
+#DBP artifact removal
+Vitalsigns16j$DBP[Vitalsigns16j$DBP <= 5]<-NA
+Vitalsigns16j$DBP[Vitalsigns16j$DBP >= 255]<-NA
+
+#MAP artifact removal
+Vitalsigns16j$MAP[Vitalsigns16j$MAP < 0]<-NA
+Vitalsigns16j$MAP[Vitalsigns16j$MAP >= 255]<-NA
+
+```
+
+

@@ -1,0 +1,223 @@
+---
+title: "Input Output, HCT and EF variables creation"
+author: "Miguel Angel Armengol de la Hoz"
+date: "10 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Libraries load
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(reshape2)
+library(summarytools)
+library(readxl)
+library(reshape)
+```
+
+# Data Load
+
+```{r}
+# IO_data_Blood <- read_excel("~/BIG FILES/Phenotyping/Hemodynamics_IO_Blood.xlsx")
+# IO_data_Fluids <- read_excel("~/BIG FILES/Phenotyping/Hemodynamics_IO_Fluids.xlsx")
+# IO_data_Urine_Output <- read_excel("~/BIG FILES/Phenotyping/Hemodynamics_IO_Urine_Output.xlsx")
+# 
+# First_HCT <- read_excel("~/BIG FILES/Phenotyping/First HCT.xlsx", col_types = c("text", "numeric", "date", "numeric", "text", "numeric", "text", "numeric"))
+# First_HCT_after_SurgTime <- read_excel("~/BIG FILES/Phenotyping/First HCT After C Time.xlsx", 
+#     col_types = c("text", "numeric", "date", 
+#         "text", "date", "date", "text", "numeric", 
+#         "text"))
+
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDataset101218.RData")
+EF <- read_excel("/Users/marmengol/MEGA/Boston/BIDMC-Harvard/Phenotyping/Dataset Creation/EF.xlsx", 
+    sheet = "echos", col_types = c("blank", 
+        "date", "blank", "blank", "blank", 
+        "blank", "text", "blank", "blank", 
+        "blank", "numeric", "numeric"))
+EF$Surgery_Date<-as.Date(EF$Surgery_Date)
+
+EF<-inner_join(
+  EF,
+  CasesofInterestDF[,c("Case_Name", "Surgery_Date", "Patient_ID")]
+  ,by=c('mrn'='Patient_ID','Surgery_Date'='Surgery_Date')
+)
+```
+
+# Loading the new dataset
+
+```{r message=FALSE, warning=FALSE}
+
+
+#let's first select only those columns we need
+
+IO_data_Blood_filtered<-IO_data_Blood %>%
+  select(Case_Name, RECORDTIME, Blood,VALUE)
+
+IO_data_Blood_filtered<-IO_data_Blood_filtered%>%
+  dplyr::rename(Time=RECORDTIME)
+
+IO_data_Fluids_filtered<-IO_data_Fluids %>%
+  select(Case_Name, RECORDTIME, Fluid,VALUE)
+
+IO_data_Fluids_filtered<-IO_data_Fluids_filtered%>%
+  dplyr::rename(Time=RECORDTIME)
+
+IO_data_Urine_Output_filtered<-IO_data_Urine_Output %>%
+  select(Case_Name, RECORDTIME, VALUE)
+
+IO_data_Urine_Output_filtered<-IO_data_Urine_Output_filtered%>%
+  dplyr::rename(Time=RECORDTIME)
+
+IO_data_Urine_Output_filtered['Urine_Output']<-'Urine_Output'
+
+First_HCT<-First_HCT%>%
+  select(Case_Name,result_name,result_value)
+
+First_HCT_after_SurgTime<-First_HCT_after_SurgTime%>%
+  select(Case_Name,result_name,result_value)
+```
+
+# Sumarizing datasets
+
+## IO_data_Blood
+
+```{r}
+#All units are in ml
+
+my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.=T), NA)
+
+IO_data_Blood_summarized<-IO_data_Blood_filtered%>%
+  select(Case_Name,Blood,VALUE)%>%
+  cast(Case_Name~Blood,fun.aggregate = my.sum)
+
+IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
+  mutate(
+    Blood=rowSums(.[c(8,11,12)], na.rm=TRUE)* ifelse(rowSums(is.na(IO_data_Blood_summarized[,c(8,11,12)])) == ncol(IO_data_Blood_summarized[,c(8,11,12)]), NA, 1)
+         )
+
+IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
+  select(Case_Name,`Cell Saver`,Blood)
+
+IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
+  dplyr::rename(Cell_Saver_ml=`Cell Saver`)%>%
+  dplyr::rename(Blood_ml=Blood)
+  
+```
+
+## IO_data_Fluids
+
+```{r}
+#All units are in ml
+
+my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.rm=T), NA)
+
+IO_data_Fluids_summarized<-IO_data_Fluids_filtered%>%
+    select(Case_Name,Fluid,VALUE)%>%
+  cast(Case_Name~Fluid,fun.aggregate = my.sum)
+
+IO_data_Fluids_summarized<-IO_data_Fluids_summarized%>%
+  mutate(
+  Colloids_ml=rowSums(.[c(3,8)], na.rm=TRUE)* ifelse(rowSums(is.na(.[c(3,8)])) == ncol(.[c(3,8)]), NA, 1)
+,Crystalloids_ml =rowSums(.[c(2,4,5,6,7,9,10,11,12)], na.rm=TRUE)*ifelse(rowSums(is.na(IO_data_Fluids_summarized[,c(2,4,5,6,7,9,10,11,12)])) == ncol(IO_data_Fluids_summarized[,c(2,4,5,6,7,9,10,11,12)]), NA, 1)
+         )
+
+IO_data_Fluids_summarized<-IO_data_Fluids_summarized%>%
+  select(Case_Name,Colloids_ml,Crystalloids_ml)
+
+```
+
+## IO_data_Urine_Output
+
+```{r}
+#All units are in ml
+
+my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.rm=T), NA)
+
+IO_data_Urine_Output_summarized<-IO_data_Urine_Output_filtered%>%
+  select(Case_Name,Urine_Output,VALUE)%>%
+  cast(Case_Name~Urine_Output,fun.aggregate = my.sum)
+
+IO_data_Urine_Output_summarized<-IO_data_Urine_Output_summarized%>%dplyr::rename(Urine_Output_ml=Urine_Output)
+```
+
+## First_HCT
+
+```{r}
+my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.rm=T), NA)
+
+First_HCT_summarized<-First_HCT%>%cast(Case_Name~result_name,fun.aggregate = my.sum)
+First_HCT_summarized<-First_HCT_summarized%>%dplyr::rename(First_HCT_pct=Hematocrit)
+```
+
+## First_HCT_after_SurgTime
+
+```{r}
+my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.rm=T), NA)
+
+First_HCT_after_SurgTime_summarized<-First_HCT_after_SurgTime%>%cast(Case_Name~result_name,fun.aggregate = my.sum)
+First_HCT_after_SurgTime_summarized<-First_HCT_after_SurgTime_summarized%>%dplyr::rename(First_HCT_after_SurgTime_pct=Hematocrit)
+```
+
+## Delta HTC
+
+```{r}
+All_HCT<-left_join(First_HCT_summarized,First_HCT_after_SurgTime_summarized)
+All_HCT['delta_HCT_pct']<-(All_HCT$First_HCT_after_SurgTime_pct - All_HCT$First_HCT_pct)
+
+
+```
+
+
+# Create dataset for joining with our cohort
+
+```{r}
+# IO_data<-left_join(All_Cases,IO_data_Blood_summarized)
+# IO_data<-left_join(IO_data,IO_data_Fluids_summarized)
+# IO_data<-left_join(IO_data,IO_data_Urine_Output_summarized)
+# IO_data<-left_join(IO_data,First_HCT_summarized)
+# IO_data<-left_join(IO_data,First_HCT_after_SurgTime_summarized)
+IO_data<-left_join(All_Cases,All_HCT)
+```
+
+# Mean Ejection Fraction
+
+## Creating necesary formulas
+
+```{r}
+# creating my functions
+my.min <- function(x) ifelse( !all(is.na(x)), min(x, na.rm=T), NA)
+my.max <- function(x) ifelse( !all(is.na(x)), max(x, na.rm=T), NA)
+my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.rm=T), NA)
+my.mean<- function(x,y) ifelse( is.na(x) | is.na(y)
+                                , sum(x,y,na.rm = T)
+                                , (x+y)/2
+                                    )
+```
+
+## Calculating mean EF
+
+```{r}
+Ejection_Fraction<-EF %>%
+  dplyr::select(Case_Name,lv_ef_min,lv_ef_max ) %>%
+  dplyr::group_by(Case_Name) %>%
+  dplyr::summarise(
+    min_ef_among_all=my.min(lv_ef_min)
+   ,max_ef_among_all=my.max(lv_ef_max)         
+            )
+
+Ejection_Fraction<-Ejection_Fraction%>%
+  rowwise() %>% 
+    dplyr::mutate( 
+      mean_ef = my.mean(min_ef_among_all,max_ef_among_all)
+      )
+
+Ejection_Fraction<-Ejection_Fraction%>%
+  dplyr::select(Case_Name,mean_ef)
+    
+```
+
+
+

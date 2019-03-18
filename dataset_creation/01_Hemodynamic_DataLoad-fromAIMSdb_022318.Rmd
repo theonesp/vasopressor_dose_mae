@@ -1,0 +1,161 @@
+---
+title: "DataLoad_and_optimization_PhenotypingJuly17"
+output: html_document
+---
+
+#Loading data from MS Access database
+
+--------------------------------------------------------------VERY IMPORTANT!!!!!!!!!!!!!!
+Steps to use, assuming 32 bit Access on windows 
+
+Select 32 bit R (is just a setting in R studio)
+search on windows for Set up ODBC data sources (32 bit)
+Go to System DSN>Add
+Choose Driver do Microsoft Access (*.mdb) > Finish
+Data source name: ProjecnameAcc
+Description: ProjectnameAcc
+Make sure to actually select the database > OK
+Now I could run the code that I liked
+
+channel <- odbcConnect("ProjectnameAcc")
+Table1Dat <- sqlFetch(channel, "Table1")
+
+##Load Light Tables
+
+```{r setup, include=FALSE}
+#install.packages("RODBC")
+library(RODBC)
+
+library(readr)
+hemodynamics_source_name_codes <- read_delim("C:/BIG FILES/Phenotyping/hemodynamics_source-name_codes.csv", 
+    ";", escape_double = FALSE, trim_ws = TRUE)
+
+
+for (i in 8:16){
+  if (i<10) {
+    # Connect to Access db  
+    channel <- odbcConnect (paste("Hemodynamics0", i, sep=""))
+    # Load tables
+    tablename<-(paste("Text0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Text"))
+    tablename<-(paste("InfusionDrugs0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "InfusionDrugs"))
+    tablename<-(paste("Events0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Events"))
+    tablename<-(paste("Date0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Date"))
+    tablename<-(paste("Combo0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Combo"))
+    tablename<-(paste("BolusDrugs0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "BolusDrugs"))
+    tablename<-(paste("InfusionDrugs0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "InfusionDrugs"))
+  
+  }
+  else{
+    # Connect to Access db
+    channel <- odbcConnect (paste("Hemodynamics", i, sep=""))
+    # Load tables
+    tablename<-(paste("Text", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Text"))
+    tablename<-(paste("InfusionDrugs", i, sep=""))
+    assign( tablename,sqlFetch(channel, "InfusionDrugs"))
+    tablename<-(paste("Events", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Events"))
+    tablename<-(paste("Date", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Date"))
+    tablename<-(paste("Combo", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Combo"))
+    tablename<-(paste("BolusDrugs", i, sep=""))
+    assign( tablename,sqlFetch(channel, "BolusDrugs"))
+    tablename<-(paste("InfusionDrugs", i, sep=""))
+    assign( tablename,sqlFetch(channel, "InfusionDrugs"))
+    }
+}
+
+```
+
+##Load Heavy Tables  
+
+```{r}
+library(RODBC)
+
+for (i in 16){
+  if (i<10) {
+  # Connect to Access db  
+  channel <- odbcConnect (paste("Hemodynamics0", i, sep=""))
+  # Load tables
+    tablename<-(paste("Vitalsigns0", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Vitalsigns"))
+  
+  }
+  else{
+    # Connect to Access db
+    channel <- odbcConnect (paste("Hemodynamics", i, sep=""))
+    # Load tables
+    tablename<-(paste("Vitalsigns", i, sep=""))
+    assign( tablename,sqlFetch(channel, "Vitalsigns"))
+    }
+}
+```
+
+#Cleaning and optimizing the data
+
+This chunk is removing not used columns and mapping the BP tags to a numerical code so the final dataset is lighter.
+
+```{r}
+
+
+dropList <- c("ItemID","Label","Units","Priority","Device_Name","Port#","Display_Value","Valid","User_Invalid","Limits_Invalid","Value_Questionable")
+HDC_source_code<- hemodynamics_source_name_codes[,c(3,4)]
+
+Vitalsigns08 <- Vitalsigns08[, !colnames(Vitalsigns08) %in% dropList]
+Vitalsigns08$`Port#`<-NULL
+Vitalsigns08<- merge(Vitalsigns08,  HDC_source_code, by='Source_Name')
+Vitalsigns08$Source_Name<-NULL
+
+Vitalsigns09 <- Vitalsigns09[, !colnames(Vitalsigns09) %in% dropList]
+Vitalsigns09$`Port#`<-NULL
+Vitalsigns09<- merge(Vitalsigns09,  HDC_source_code, by='Source_Name')
+Vitalsigns09$Source_Name<-NULL
+
+Vitalsigns10 <- Vitalsigns10[, !colnames(Vitalsigns10) %in% dropList]
+Vitalsigns10$`Port#`<-NULL
+Vitalsigns10<- merge(Vitalsigns10,  HDC_source_code, by='Source_Name')
+Vitalsigns10$Source_Name<-NULL
+
+Vitalsigns11 <- Vitalsigns11[, !colnames(Vitalsigns11) %in% dropList]
+Vitalsigns11$`Port#`<-NULL
+Vitalsigns11<- merge(Vitalsigns11,  HDC_source_code, by='Source_Name')
+Vitalsigns11$Source_Name<-NULL
+
+Vitalsigns12 <- Vitalsigns12[, !colnames(Vitalsigns12) %in% dropList]
+Vitalsigns12$`Port#`<-NULL
+Vitalsigns12<- merge(Vitalsigns12,  HDC_source_code, by='Source_Name')
+Vitalsigns12$Source_Name<-NULL
+
+Vitalsigns13 <- Vitalsigns13[, !colnames(Vitalsigns13) %in% dropList]
+Vitalsigns13$`Port#`<-NULL
+Vitalsigns13<- merge(Vitalsigns13,  HDC_source_code, by='Source_Name')
+Vitalsigns13$Source_Name<-NULL
+
+Vitalsigns14 <- Vitalsigns14[, !colnames(Vitalsigns14) %in% dropList]
+Vitalsigns14$`Port#`<-NULL
+Vitalsigns14<- merge(Vitalsigns14,  HDC_source_code, by='Source_Name')
+Vitalsigns14$Source_Name<-NULL
+
+Vitalsigns15 <- Vitalsigns15[, !colnames(Vitalsigns15) %in% dropList]
+Vitalsigns15$`Port#`<-NULL
+Vitalsigns15<- merge(Vitalsigns15,  HDC_source_code, by='Source_Name')
+Vitalsigns15$Source_Name<-NULL
+
+Vitalsigns16 <- Vitalsigns16[, !colnames(Vitalsigns16) %in% dropList]
+Vitalsigns16$`Port#`<-NULL
+Vitalsigns16<- merge(Vitalsigns16,  HDC_source_code, by='Source_Name')
+Vitalsigns16$Source_Name<-NULL
+
+
+```
+
+
+

@@ -1,0 +1,67 @@
+---
+title: "Anesthesiologists Selection, Surgeons_all_yearsDF, Any MAE"
+author: "Miguel Ángel Armengol de la Hoz"
+date: "10 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#load the data
+library(dplyr)
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+```
+
+#Providers dataframes 
+
+##Cleaning Providers dataframe (ComboDF creation)
+
+```{r}
+ComboDF<- rbind(Combo08, Combo09, Combo10,Combo11,Combo12,Combo13,Combo14,Combo15,Combo16)
+
+#Correcting the mistake in duplicate physician 
+
+# code removed since it contained phi
+
+ComboDF$Time<-NULL
+ComboDF$ItemID<-NULL
+ComboDF$C_Type<-NULL
+ComboDF$C_Type_Label<-NULL
+ComboDF$C_Association<-NULL
+ComboDF$ComboText<-NULL
+ComboDF$ESIG<-NULL
+ComboDF$ESIGNAMETEXT<-NULL
+ComboDF$ESIGDATEANDTIME<-NULL
+
+```
+
+## Selected Anesthesiologists DF
+
+In this list we select Anesthesiologists performing overall >=30 surgeries from 2008-2016
+
+```{r}
+#Selecting anesthesiologists
+library(dplyr)
+# code removed since it contained phi
+
+unique(Anesthesiologists_selection)
+
+Anesthesiologists_selection<-Anesthesiologists_selection %>%
+mutate(Anesthesiologist=C_Item) %>%
+dplyr::select(Case_Name,Anesthesiologist)
+
+Anesthesiologists_selection<-unique(Anesthesiologists_selection)
+
+```
+
+
+*code removed since it contained phi*
+
+
+

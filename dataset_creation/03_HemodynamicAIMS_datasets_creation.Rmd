@@ -1,0 +1,84 @@
+---
+title: "3_HemodynamicAIMS_datasets_creation"
+author: "Miguel Ángel Armengol de la Hoz"
+date: "27 de febrero de 2018"
+output: html_document
+toc: TRUE
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+```
+
+#AIMS
+
+#Creatintg Lists to analyze
+```{r}
+ComboList <- list(Combo08, Combo09, Combo10,Combo11,Combo12,Combo13,Combo14,Combo15,Combo16)
+names(ComboList)<- c("Combo08", "Combo09", "Combo10", "Combo11", "Combo12", "Combo13","Combo14","Combo15", "Combo16")
+
+TextList <- list(Text08, Text09, Text10,Text11,Text12,Text13,Text14,Text15,Text16)
+names(TextList)<- c("Text08", "Text09", "Text10", "Text11", "Text12", "Text13","Text14","Text15", "Text16")
+
+
+VitalsignsList <- list(Vitalsigns08, Vitalsigns09, Vitalsigns10,Vitalsigns11,Vitalsigns12,Vitalsigns13,Vitalsigns14,Vitalsigns15,Vitalsigns16)
+names( VitalsignsList)<- c("Vitalsigns08", "Vitalsigns09", "Vitalsigns10", "Vitalsigns11", "Vitalsigns12", "Vitalsigns13","Vitalsigns14","Vitalsigns15", "Vitalsigns16")
+
+EventsList <- list(Events08, Events09, Events10,Events11,Events12,Events13,Events14,Events15,Events16)
+names( EventsList)<- c("Events08", "Events09", "Events10", "Events11", "Events12", "Events13","Events14","Events15", "Events16")
+
+InfusionDrugsList <- list(InfusionDrugs08, InfusionDrugs09, InfusionDrugs10,InfusionDrugs11,InfusionDrugs12,InfusionDrugs13,InfusionDrugs14,InfusionDrugs15,InfusionDrugs16)
+names( InfusionDrugsList)<- c("InfusionDrugs08", "InfusionDrugs09", "InfusionDrugs10", "InfusionDrugs11", "InfusionDrugs12", "InfusionDrugs13","InfusionDrugs14","InfusionDrugs15", "InfusionDrugs16")
+
+DateList <- list(Date08, Date09, Date10,Date11,Date12,Date13,Date14,Date15,Date16)
+names( DateList)<- c("Date08", "Date09", "Date10", "Date11", "Date12", "Date13","Date14","Date15", "Date16")
+
+BolusDrugsList <- list(BolusDrugs08, BolusDrugs09, BolusDrugs10,BolusDrugs11,BolusDrugs12,BolusDrugs13,BolusDrugs14,BolusDrugs15,BolusDrugs16)
+names( BolusDrugsList)<- c("BolusDrugs08", "BolusDrugs09", "BolusDrugs10", "BolusDrugs11", "BolusDrugs12", "BolusDrugs13","BolusDrugs14","BolusDrugs15", "BolusDrugs16")
+
+```
+
+#Anesthesiologists 
+```{r}
+totalnumberOFAnesthesiologists<-union_all(
+  Combo08$C_Item[Combo08$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo09$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo10$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo11$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo12$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo13$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo14$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo15$Label=='Attending Anesthesiologist'],
+  Combo09$C_Item[Combo16$Label=='Attending Anesthesiologist'])
+
+totalnumberOFResidents<-union_all(
+  Combo08$C_Item[Combo08$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo09$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo10$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo11$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo12$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo13$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo14$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo15$Label=='Resident/CRNA'],
+  Combo09$C_Item[Combo16$Label=='Resident/CRNA'])
+
+##Surgeon
+
+totalnumberOFSurgeons<-union_all(
+  Combo08$C_Item[Combo08$Label=='Surgeon'],
+  Combo09$C_Item[Combo09$Label=='Surgeon'],
+  Combo09$C_Item[Combo10$Label=='Surgeon'],
+  Combo09$C_Item[Combo11$Label=='Surgeon'],
+  Combo09$C_Item[Combo12$Label=='Surgeon'],
+  Combo09$C_Item[Combo13$Label=='Surgeon'],
+  Combo09$C_Item[Combo14$Label=='Surgeon'],
+  Combo09$C_Item[Combo15$Label=='Surgeon'],
+  Combo09$C_Item[Combo16$Label=='Surgeon'])
+
+```
+
+
+
+
+

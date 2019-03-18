@@ -1,0 +1,89 @@
+---
+title: "Data Imputation"
+author: "Miguel Angel Armengol de la Hoz"
+date: "10 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Libraries load
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(reshape2)
+library(summarytools)
+library(readxl)
+library(reshape)
+```
+
+# Imputing missing data
+
+## STS_risk
+
+### Mean and median imputation
+
+We chose median imputation after having run the model with the best AUROC among all imputations.
+
+```{r}
+
+FinalHemodynamicsDataset['STS_RiskAlgorithm_mean_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$STS_RiskAlgorithm)
+,mean(FinalHemodynamicsDataset$STS_RiskAlgorithm,na.rm = T)
+,FinalHemodynamicsDataset$STS_RiskAlgorithm
+)
+  
+FinalHemodynamicsDataset['STS_RiskAlgorithm_median_imp']<-ifelse(
+is.na(FinalHemodynamicsDataset$STS_RiskAlgorithm)
+,median(FinalHemodynamicsDataset$STS_RiskAlgorithm,na.rm = T)
+,FinalHemodynamicsDataset$STS_RiskAlgorithm)
+
+```
+
+### Multiple imputation
+
+```{r eval=FALSE, include=FALSE}
+#min and max taken from STS risk scores docummentation
+bds <- matrix(c(7, 0, 100), nrow = 1, ncol = 3)# we need a matrix of bounds(number of column to bound, min, max)
+
+relevant_data_imputation_matrix<-amelia(FinalHemodynamicsDataset, parallel = "multicore",idvars = 'Case_Name',noms = c('Gender','Category','Q_AUT50MAP_total_min','Q_AUT65MAP_total_min','Q_AOT65MAP_total_min','Q_total_pressors_formula_mg')
+                               #, ords = #Ords is only for ingegers, not floats
+                               ,bounds = bds
+
+                               )
+
+FinalHemodynamicsDataset<-FinalHemodynamicsDataset_imputation_matrix$imputations$imp5
+
+names(FinalHemodynamicsDataset)[names(FinalHemodynamicsDataset)=="STS_RiskAlgorithm"]<-"STS_RiskAlgorithm_multiple_imp"
+
+summary(FinalHemodynamicsDataset$STS_RiskAlgorithm_multiple_imp)
+
+#STS risk cannot be negative
+# to avoid problems when using log
+#there can not be 0 values in a log(variable) in a logreg
+```
+
+## Mean EF
+
+```{r}
+FinalHemodynamicsDataset['mean_ef_median_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$mean_ef)
+,median(FinalHemodynamicsDataset$mean_ef,na.rm = T)
+,FinalHemodynamicsDataset$mean_ef
+)
+```
+
+
+## Delta HTC
+
+```{r}
+FinalHemodynamicsDataset['delta_HCT_pct_median_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$delta_HCT_pct)
+,median(FinalHemodynamicsDataset$delta_HCT_pct,na.rm = T)
+,FinalHemodynamicsDataset$delta_HCT_pct
+)
+```
+
+
+

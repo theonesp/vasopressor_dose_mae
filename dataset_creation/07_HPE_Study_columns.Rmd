@@ -1,0 +1,536 @@
+---
+title: "7_HPE_Study_AUT_AWI_and_ratios"
+author: "Miguel Angel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+# Load the enviroment and data
+
+```{r}
+
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+
+#load libs
+library(dplyr)
+#library(xlsx)
+library(compare)
+```
+
+# Hypothension episodes location dataset
+
+We need a dataset to know in which period of the surgery (preCPB|CPB|postCPB) our timestamps are taking place.
+
+```{r eval=FALSE, include=FALSE}
+All_Cases<-data.frame(unique(VitalsignsF$Case_Name))
+colnames(All_Cases)[1]<-'Case_Name'
+
+VitalsignsandCPBTimes <- merge(VitalsignsF, rCPBEventsDF, by = c('Case_Name'), all = FALSE)
+#In fVitalsignsDF index is useless and we need to order by Case_Name and Time!
+VitalsignsandCPBTimes<-VitalsignsandCPBTimes%>%
+arrange(Case_Name, Time)
+
+#here we identify in which period of the CPB our timestamp is taking place
+VitalsignsandCPBTimes<-VitalsignsandCPBTimes %>% mutate(preCPB= if_else(Time<CPB_Begin_Time,1,0))
+VitalsignsandCPBTimes<-VitalsignsandCPBTimes %>% mutate(CPB= if_else(Time>=CPB_Begin_Time & Time<=CPB_End_Time,1,0))
+VitalsignsandCPBTimes<-VitalsignsandCPBTimes %>% mutate(postCPB= if_else(Time>CPB_End_Time,1,0))
+
+```
+
+# MAP
+
+- AWI: Area within the interval.
+- AUT: Area under the threshold.
+- AOT: Area over the threshold.
+
+## AUT MAP <= 50 mmHg length per period and ratios
+
+
+```{r}
+
+
+#Solving select problem!!!!!!:
+
+#select causes problem since it is also in package MASS
+#use dplyr::select( to solve it
+
+
+#AUT50MAP_total_min calculation
+
+#detach(package:plyr)
+
+#detach("package:plyr", unload=TRUE) 
+
+AUT50MAP<-VitalsignsF%>%
+dplyr::select(Case_Name, MAP)%>%
+group_by(Case_Name)%>%
+dplyr::filter(MAP<=50)%>%
+dplyr::summarise(AUT50MAP_total_min = n()*15/60)
+AUT50MAP<-left_join(All_Cases, AUT50MAP)
+AUT50MAP[is.na(AUT50MAP)]<-0
+
+#AUT50MAP_total_min calculation
+
+
+AUT50MAP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & MAP <=50) %>% dplyr::summarise(AUT50MAP_preCPB_min = n()*15/60)
+
+AUT50MAP_CPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>%dplyr::filter(CPB==1 & MAP <=50) %>% dplyr::summarise(AUT50MAP_CPB_min = n()*15/60)
+
+AUT50MAP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & MAP <=50) %>% dplyr::summarise(AUT50MAP_postCPB_min = n()*15/60)
+
+require(plyr)
+AUT50MAP<-join_all(list(AUT50MAP,AUT50MAP_preCPB,AUT50MAP_CPB,AUT50MAP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AUT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodsDF,AUT50MAP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AUT50MAP_total_ratio=round(AUT50MAP_total_min/duration_Surgery_min,2),
+       AUT50MAP_preCPB_ratio=round(AUT50MAP_preCPB_min/duration_preCPB_min,2),
+       AUT50MAP_CPB_ratio=round(AUT50MAP_CPB_min/duration_CPB_min,2),
+       AUT50MAP_postCPB_ratio=round(AUT50MAP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+##AWI MAP >= 51 <=60 mmHg length per period and ratios
+
+```{r}
+
+#AUT50MAP_total_min calculation
+
+detach(package:plyr)
+AWI51_60MAP<-VitalsignsF%>%
+dplyr::select(Case_Name, MAP)%>%
+group_by(Case_Name)%>%
+filter(MAP >= 51 & MAP <=60 ) %>%
+summarise(AWI51_60MAP_total_min = n()*15/60)
+AWI51_60MAP<-left_join(All_Cases, AWI51_60MAP)
+AWI51_60MAP[is.na(AWI51_60MAP)]<-0
+
+#AUT50MAP_total_min calculation
+library(compare)
+
+AWI51_60MAP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & MAP >= 51 & MAP <=60 ) %>% dplyr::summarise(AWI51_60MAP_preCPB_min = n()*15/60)
+
+AWI51_60MAP_CPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>%dplyr::filter(CPB==1 & MAP >= 51 & MAP <=60 ) %>% dplyr::summarise(AWI51_60MAP_CPB_min = n()*15/60)
+
+AWI51_60MAP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & MAP >= 51 & MAP <=60 ) %>% dplyr::summarise(AWI51_60MAP_postCPB_min = n()*15/60)
+
+require(plyr)
+AWI51_60MAP<-join_all(list(AWI51_60MAP,AWI51_60MAP_preCPB,AWI51_60MAP_CPB,AWI51_60MAP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AUT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AWI51_60MAP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AWI51_60MAP_total_ratio=round(AWI51_60MAP_total_min/duration_Surgery_min,2),
+       AWI51_60MAP_preCPB_ratio=round(AWI51_60MAP_preCPB_min/duration_preCPB_min,2),
+       AWI51_60MAP_CPB_ratio=round(AWI51_60MAP_CPB_min/duration_CPB_min,2),
+       AWI51_60MAP_postCPB_ratio=round(AWI51_60MAP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+## AWI MAP >= 61 <65 mmHg length per period and ratios
+
+```{r}
+
+#AUT50MAP_total_min calculation
+
+detach(package:plyr)
+AWI61_65MAP<-VitalsignsF%>%
+dplyr::select(Case_Name, MAP)%>%
+group_by(Case_Name)%>%
+filter(MAP >= 61 & MAP <65 ) %>%
+summarise(AWI61_65MAP_total_min = n()*15/60)
+AWI61_65MAP<-left_join(All_Cases, AWI61_65MAP)
+AWI61_65MAP[is.na(AWI61_65MAP)]<-0
+
+#AUT50MAP_total_min calculation
+library(compare)
+
+AWI61_65MAP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & MAP >= 61 & MAP <65 ) %>% dplyr::summarise(AWI61_65MAP_preCPB_min = n()*15/60)
+
+AWI61_65MAP_CPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>%dplyr::filter(CPB==1 & MAP >= 61 & MAP <65 ) %>% dplyr::summarise(AWI61_65MAP_CPB_min = n()*15/60)
+
+AWI61_65MAP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & MAP >= 61 & MAP <65 ) %>% dplyr::summarise(AWI61_65MAP_postCPB_min = n()*15/60)
+
+require(plyr)
+AWI61_65MAP<-join_all(list(AWI61_65MAP,AWI61_65MAP_preCPB,AWI61_65MAP_CPB,AWI61_65MAP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AUT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AWI61_65MAP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AWI61_65MAP_total_ratio=round(AWI61_65MAP_total_min/duration_Surgery_min,2),
+       AWI61_65MAP_preCPB_ratio=round(AWI61_65MAP_preCPB_min/duration_preCPB_min,2),
+       AWI61_65MAP_CPB_ratio=round(AWI61_65MAP_CPB_min/duration_CPB_min,2),
+       AWI61_65MAP_postCPB_ratio=round(AWI61_65MAP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+## AOT MAP >= 65 mmHg length per period and ratios
+
+```{r}
+
+#AOT65MAP_total_min calculation
+
+detach(package:plyr)
+AOT65MAP<-VitalsignsF%>%
+dplyr::select(Case_Name, MAP)%>%
+group_by(Case_Name)%>%
+filter(MAP >=65) %>%
+summarise(AOT65MAP_total_min = n()*15/60)
+AOT65MAP<-left_join(All_Cases, AOT65MAP)
+AOT65MAP[is.na(AOT65MAP)]<-0
+
+
+#AOT65MAP_total_min calculation
+library(compare)
+
+AOT65MAP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & MAP >=65) %>% dplyr::summarise(AOT65MAP_preCPB_min = n()*15/60)
+
+AOT65MAP_CPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>%dplyr::filter(CPB==1 & MAP >=65) %>% dplyr::summarise(AOT65MAP_CPB_min = n()*15/60)
+
+AOT65MAP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & MAP >=65) %>% dplyr::summarise(AOT65MAP_postCPB_min = n()*15/60)
+
+require(plyr)
+AOT65MAP<-join_all(list(AOT65MAP,AOT65MAP_preCPB,AOT65MAP_CPB,AOT65MAP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AUT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AOT65MAP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AOT65MAP_total_ratio=round(AOT65MAP_total_min/duration_Surgery_min,2),
+       AOT65MAP_preCPB_ratio=round(AOT65MAP_preCPB_min/duration_preCPB_min,2),
+       AOT65MAP_CPB_ratio=round(AOT65MAP_CPB_min/duration_CPB_min,2),
+       AOT65MAP_postCPB_ratio=round(AOT65MAP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+## AUT MAP < 65 mmHg length per period and ratios
+
+```{r}
+
+#AUT65MAP_total_min calculation
+detach("package:plyr")
+AUT65MAP<-VitalsignsF%>%
+dplyr::select(Case_Name, MAP)%>%
+group_by(Case_Name)%>%
+filter(MAP <65) %>%
+summarise(AUT65MAP_total_min = n()*15/60)
+AUT65MAP<-left_join(All_Cases, AUT65MAP)
+AUT65MAP[is.na(AUT65MAP)]<-0
+
+
+#AUT65MAP_total_min calculation
+library(compare)
+
+AUT65MAP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & MAP <65) %>% dplyr::summarise(AUT65MAP_preCPB_min = n()*15/60)
+
+AUT65MAP_CPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>%dplyr::filter(CPB==1 & MAP <65) %>% dplyr::summarise(AUT65MAP_CPB_min = n()*15/60)
+
+AUT65MAP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & MAP <65) %>% dplyr::summarise(AUT65MAP_postCPB_min = n()*15/60)
+
+require(plyr)
+AUT65MAP<-join_all(list(AUT65MAP,AUT65MAP_preCPB,AUT65MAP_CPB,AUT65MAP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AUT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AUT65MAP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AUT65MAP_total_ratio=round(AUT65MAP_total_min/duration_Surgery_min,2),
+       AUT65MAP_preCPB_ratio=round(AUT65MAP_preCPB_min/duration_preCPB_min,2),
+       AUT65MAP_CPB_ratio=round(AUT65MAP_CPB_min/duration_CPB_min,2),
+       AUT65MAP_postCPB_ratio=round(AUT65MAP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+# SBP
+
+## AUT SBP <= 80 mmHg length per period and ratios
+
+```{r}
+
+#AUT80SBP_total_min calculation
+
+#detach(package:plyr)
+AUT80SBP<-VitalsignsF%>%
+dplyr::select(Case_Name, SBP)%>%
+group_by(Case_Name)%>%
+filter(SBP <=80) %>%
+dplyr::summarise(AUT80SBP_total_min = n()*15/60)
+AUT80SBP<-left_join(All_Cases, AUT80SBP)
+AUT80SBP[is.na(AUT80SBP)]<-0
+
+
+#AUT80SBP_total preCPB and postCPB min calculation
+library(compare)
+
+AUT80SBP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & SBP <=80) %>%  dplyr::summarise(AUT80SBP_preCPB_min = n()*15/60)
+
+AUT80SBP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & SBP <=80) %>% dplyr::summarise(AUT80SBP_postCPB_min = n()*15/60)
+
+require(plyr)
+AUT80SBP<-join_all(list(AUT80SBP,AUT80SBP_preCPB,AUT80SBP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AUT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AUT80SBP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AUT80SBP_total_ratio=round(AUT80SBP_total_min/duration_Surgery_min,2),
+       AUT80SBP_preCPB_ratio=round(AUT80SBP_preCPB_min/duration_preCPB_min,2),
+       AUT80SBP_postCPB_ratio=round(AUT80SBP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+## AOT SBP >80 mmHg length per period and ratios
+
+```{r}
+
+#AOT80SBP_total_min calculation
+
+detach(package:plyr)
+AOT80SBP<-VitalsignsF%>%
+dplyr::select(Case_Name, SBP)%>%
+group_by(Case_Name)%>%
+filter(SBP >80) %>%
+dplyr::summarise(AOT80SBP_total_min = n()*15/60)
+AOT80SBP<-left_join(All_Cases, AOT80SBP)
+AOT80SBP[is.na(AOT80SBP)]<-0
+
+#AOT80SBP_total preCPB and postCPB min calculation
+library(compare)
+
+AOT80SBP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & SBP >80) %>%  dplyr::summarise(AOT80SBP_preCPB_min = n()*15/60)
+
+AOT80SBP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & SBP >80) %>%  dplyr::summarise(AOT80SBP_postCPB_min = n()*15/60)
+
+require(plyr)
+AOT80SBP<-join_all(list(AOT80SBP,AOT80SBP_preCPB,AOT80SBP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AOT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AOT80SBP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AOT80SBP_total_ratio=round(AOT80SBP_total_min/duration_Surgery_min,2),
+       AOT80SBP_preCPB_ratio=round(AOT80SBP_preCPB_min/duration_preCPB_min,2),
+       AOT80SBP_postCPB_ratio=round(AOT80SBP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+# DBP
+
+## AUT DBP <= 30 mmHg length per period and ratios
+
+```{r}
+
+#AUT30DBP_total_min calculation
+
+detach(package:plyr)
+AUT30DBP<-VitalsignsF%>%
+dplyr::select(Case_Name, DBP)%>%
+group_by(Case_Name)%>%
+filter(DBP <=30) %>%
+summarise(AUT30DBP_total_min = n()*15/60)
+AUT30DBP<-left_join(All_Cases, AUT30DBP)
+AUT30DBP[is.na(AUT30DBP)]<-0
+
+#AUT30DBP_total preCPB and postCPB min calculation
+library(compare)
+
+AUT30DBP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & DBP <=30) %>% dplyr::summarise(AUT30DBP_preCPB_min = n()*15/60)
+
+AUT30DBP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & DBP <=30) %>% dplyr::summarise(AUT30DBP_postCPB_min = n()*15/60)
+
+require(plyr)
+AUT30DBP<-join_all(list(AUT30DBP,AUT30DBP_preCPB,AUT30DBP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AUT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AUT30DBP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AUT30DBP_total_ratio=round(AUT30DBP_total_min/duration_Surgery_min,2),
+       AUT30DBP_preCPB_ratio=round(AUT30DBP_preCPB_min/duration_preCPB_min,2),
+       AUT30DBP_postCPB_ratio=round(AUT30DBP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+## AOT DBP > 30 mmHg length per period and ratios
+
+```{r}
+
+#AOT30DBP_total_min calculation
+
+detach(package:plyr)
+AOT30DBP<-VitalsignsF%>%
+dplyr::select(Case_Name, DBP)%>%
+group_by(Case_Name)%>%
+filter(DBP >30) %>%
+summarise(AOT30DBP_total_min = n()*15/60)
+AOT30DBP<-left_join(All_Cases, AOT30DBP)
+AOT30DBP[is.na(AOT30DBP)]<-0
+
+#AOT30DBP_total preCPB and postCPB min calculation
+library(compare)
+
+AOT30DBP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & DBP >30) %>% dplyr::summarise(AOT30DBP_preCPB_min = n()*15/60)
+
+AOT30DBP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & DBP >30) %>% dplyr::summarise(AOT30DBP_postCPB_min = n()*15/60)
+
+require(plyr)
+AOT30DBP<-join_all(list(AOT30DBP,AOT30DBP_preCPB,AOT30DBP_postCPB), by ='Case_Name')
+
+#now we add the ratios, for that we need duration info thus we merge our AOT dataset with AllPeriodsDF
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AOT30DBP)
+
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+mutate(AOT30DBP_total_ratio=round(AOT30DBP_total_min/duration_Surgery_min,2),
+       AOT30DBP_preCPB_ratio=round(AOT30DBP_preCPB_min/duration_preCPB_min,2),
+       AOT30DBP_postCPB_ratio=round(AOT30DBP_postCPB_min/duration_postCPB_min,2)
+       )
+```
+
+# New AUC-related Variables
+
+## MAP
+
+### AUC MAP < 65 Variable Creation
+
+AUC under 65 mmHg Dataset creation
+
+```{r}
+
+detach("package:plyr")
+AUC65MAP<-VitalsignsF%>%
+dplyr::select(Case_Name, MAP)%>%
+filter(MAP<65) %>%
+mutate(rectangle=(65-MAP)*0.25) %>%
+group_by(Case_Name)%>%
+summarise(AUC65MAP_total_mmHgmin = sum(rectangle)) %>%
+arrange(Case_Name)
+
+# AUT65MAP<-left_join(All_Cases, AUT65MAP)
+
+```
+
+### AOC MAP > 65 Variable Creation
+
+AOC over or equal 65 mmHg Dataset creation
+
+```{r}
+
+#detach("package:plyr")
+
+AOC65MAP<-VitalsignsF%>%
+dplyr::select(Case_Name, MAP)%>%
+filter(MAP >=65) %>%
+mutate(rectangle=(MAP-65)*0.25) %>%
+group_by(Case_Name)%>%
+summarise(AOC65MAP_total_mmHgmin = sum(rectangle)) %>%
+arrange(Case_Name)
+```
+
+### Combined TWA & AUC MAP <= 65 and All_AUC65MAP_variables Variable Creation
+
+TWA-MAP under 65 mmHg dataset creation
+
+```{r}
+
+All_AUC65MAP_variables<-left_join(AllPeriodsDF,AUC65MAP)%>%
+dplyr::select(Case_Name, duration_Surgery_min,AUC65MAP_total_mmHgmin)%>%
+  mutate(TWA65MAP_total_mmHg=round(AUC65MAP_total_mmHgmin/duration_Surgery_min,2)) %>%
+  select(Case_Name,AUC65MAP_total_mmHgmin,TWA65MAP_total_mmHg)
+
+All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables, AOC65MAP)
+# those that didn't have values <65 or >=65 spent 0 minutes in the threshold.
+All_AUC65MAP_variables[is.na(All_AUC65MAP_variables)]<-0
+
+```
+
+# REPLACING NA with 0
+
+## Replacing 0 in CPB related calculated colums
+
+What to do for those CPB-related variables that have no CPB times? 
+_We exclude those cases_
+
+```{r eval=FALSE, include=FALSE}
+
+#nested if else function creation
+
+i <- function(if_stat, then) {
+  if_stat <- lazyeval::expr_text(if_stat)
+  then    <- lazyeval::expr_text(then)
+  sprintf("ifelse(%s, %s, ", if_stat, then)
+}
+
+e <- function(else_ret) {
+  else_ret <- lazyeval::expr_text(else_ret)
+  else_ret
+}
+
+ie <- function(...) {
+  args <- list(...)
+  
+  for (i in 1:(length(args) - 1) ) {
+      if (substr(args[[i]], 1, 6) != "ifelse") {
+        stop("All but the last argument, need to be i functions.", call. = FALSE)
+      }
+  }
+  if (substr(args[[length(args)]], 1, 6) == "ifelse"){
+    stop("Last argument needs to be an e function.", call. = FALSE)
+  }
+  args$final <- paste(rep(')', length(args) - 1), collapse = '')
+  eval_string <- do.call('paste', args)
+  eval(parse(text = eval_string))
+}
+
+
+
+preCPBcols<-names(AllPeriodswith_AUT_AOT_and_AWI_DF[,grep('preCPB_ratio|preCPB_min', names(AllPeriodswith_AUT_AOT_and_AWI_DF))])
+for (n in 1:length(CPBcols)) {
+  colnam<-CPBcols[n]
+#print(AllPeriodswith_AUT_AOT_and_AWI_DF[,colnam] )
+AllPeriodswith_AUT_AOT_and_AWI_DF[,colnam] <- 
+#    i( is.na(AllPeriodswith_AUT_AOT_and_AWI_DF[,colnam])  ,   NA),
+    ie(
+    i(  is.na(AllPeriodswith_AUT_AOT_and_AWI_DF$Sur_Begin_Time) ,   1),
+    i(  is.na(AllPeriodswith_AUT_AOT_and_AWI_DF$CPB_Begin_Time) ,   2),
+    e(0)
+  )
+
+i(if_stat = 3>4,2)
+
+}
+
+
+```
+
+## checking durations with neg values
+
+```{r eval=FALSE, include=FALSE}
+durations<-names(FinalHemodynamicsDataset[,grep('_min', names(FinalHemodynamicsDataset))])
+for (i in 1:length(durations)) {
+  colnam<-durations[i]
+  if(sum(FinalHemodynamicsDataset[,colnam] <0, na.rm = TRUE)>0){
+      cat(colnam)
+   print(sum(FinalHemodynamicsDataset[,colnam] <0, na.rm = TRUE))
+  }
+}
+```
+
+
+```{r eval=FALSE, include=FALSE}
+STS_filtered$Stroke[is.na(STS_filtered$AUT50MAP_total_min)]<-0
+```
+

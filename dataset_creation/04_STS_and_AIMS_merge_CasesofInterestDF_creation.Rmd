@@ -1,0 +1,78 @@
+---
+title: "4_STS_and_AIMS_merge CasesofInterestDF creation"
+author: "Miguel Angel Armengol de la Hoz"
+date: "27 de febrero de 2018"
+output: html_document
+toc: TRUE
+---
+
+```{r setup, include=FALSE}
+#Data Load
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+#setwd("C:/Users/Miguel_Angel/Documents/MEGA/Boston/BIDMC - Harvard/Phenotyping Feb18")
+```
+
+# Cases of interest
+
+
+```{r eval=FALSE, include=FALSE}
+#Already formated Date of Surgery to Join with STS
+Text08$Time<-format(Text08$Time, "%Y-%m-%d")
+Text09$Time<-format(Text09$Time, "%Y-%m-%d")
+Text10$Time<-format(Text10$Time, "%Y-%m-%d")
+Text11$Time<-format(Text11$Time, "%Y-%m-%d")
+Text12$Time<-format(Text12$Time, "%Y-%m-%d")
+Text13$Time<-format(Text13$Time, "%Y-%m-%d")
+Text14$Time<-format(Text14$Time, "%Y-%m-%d")
+Text15$Time<-format(Text15$Time, "%Y-%m-%d")
+Text16$Time<-format(Text16$Time, "%Y-%m-%d")
+```
+
+# STS and AIMS join
+
+We need the table Text to be able to get the Case_Name for each procedure so we are later able to join by Vital_Signs.
+This way we can link 5724 Cases between STS and AIMS.
+
+```{r}
+
+Cases_of_Interest08<-merge(x=STS_filtered, y= select(	Text08,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest09<-merge(x=STS_filtered, y= select(	Text09,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest10<-merge(x=STS_filtered, y= select(	Text10,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest11<-merge(x=STS_filtered, y= select(	Text11,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest12<-merge(x=STS_filtered, y= select(	Text12,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest13<-merge(x=STS_filtered, y= select(	Text13,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest14<-merge(x=STS_filtered, y= select(	Text14,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest15<-merge(x=STS_filtered, y= select(	Text15,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest16<-merge(x=STS_filtered, y= select(	Text16,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+
+# Cases_of_InteresList <- list(Cases_of_Interest08, Cases_of_Interest09, Cases_of_Interest10,Cases_of_Interest11,Cases_of_Interest12,Cases_of_Interest13,Cases_of_Interest14,Cases_of_Interest15,Cases_of_Interest16)
+# names( Cases_of_InteresList)<- c("Cases_of_Interest08", "Cases_of_Interest09", "Cases_of_Interest10", "Cases_of_Interest11", "Cases_of_Interest12", "Cases_of_Interest13","Cases_of_Interest14","Cases_of_Interest15", "Cases_of_Interest16")
+
+VectorwithCasesofInterest<-union_all(Cases_of_Interest08$Case_Name,
+          Cases_of_Interest09$Case_Name,
+          Cases_of_Interest10$Case_Name,
+          Cases_of_Interest11$Case_Name,
+          Cases_of_Interest12$Case_Name,
+          Cases_of_Interest13$Case_Name,
+          Cases_of_Interest14$Case_Name,
+          Cases_of_Interest15$Case_Name,
+          Cases_of_Interest16$Case_Name
+          )
+
+VectorwithCasesofInterest<-unique(VectorwithCasesofInterest)
+
+CasesofInterestDF<-union_all(Cases_of_Interest08, Cases_of_Interest09)
+CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest10)
+CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest11)
+CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest12)
+CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest13)
+CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest14)
+CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest15)
+CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest16)
+
+#write.csv(CasesofInterestDF, 'CasesofInterestDF.csv')
+
+write.xlsx(CasesofInterestDF[,c('Patient_ID','Surgery_Date')], 'patientslist.xlsx')
+```
+
+

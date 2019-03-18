@@ -1,0 +1,202 @@
+---
+title: "6_CPBPeriods_Surg_Times_and_VitalsignsF_creation"
+author: "Miguel Angel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r}
+#Load the enviroment
+
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+
+```
+
+# Creating VitalsignsF: Merging all years of vitalsigns in one dataset
+
+```{r}
+VitalsignsF <- rbind(Vitalsigns08j, Vitalsigns09j, Vitalsigns10j,Vitalsigns11j,Vitalsigns12j,Vitalsigns13j,Vitalsigns14j,Vitalsigns15j,Vitalsigns16j)
+```
+
+# Importing data for Anesthesia Induction (AI) and Anesthesia Finish (AF) Times
+
+```{r}
+library(readxl)
+Anesthesia_Finish_Times <- read_excel("C:/BIG FILES/Phenotyping/hemodynamics/Anesthesia Finish Times.xlsx", 
+    col_types = c("blank", "text", "text", 
+        "date"))
+
+Anesthesia_Induction_Times <- read_excel("C:/BIG FILES/Phenotyping/hemodynamics/Anesthesia Induction Times.xlsx", 
+    col_types = c("text", "date"))
+
+```
+
+
+# Studying data available between tables
+
+```{r}
+Case_Name_List_in_Text<-as.vector(unlist(unname(sapply(TextList, `[[`, 1))))
+Case_Name_List_in_Text<-unique(Case_Name_List_in_Text)
+#Text has 5997 Cases
+
+Case_Name_List_in_Vitalsigns<-as.vector(VitalsignsF$Case_Name)
+Case_Name_List_in_Vitalsigns<-as.character(unique(VitalsignsF$Case_Name))
+#Vitalsigns has 5708 Cases
+
+table(Case_Name_List_in_Vitalsigns %in% Case_Name_List_in_Text)
+# All 5708 Cases from Vitalsigns are in Text
+
+Case_Name_List_in_STS_Text_JOIN<-unique(CasesofInterestDF$Case_Name)
+# The Join between STS and Text has 5724 Cases
+
+VitalsignsF<-VitalsignsF %>%
+  filter(Case_Name %in% Case_Name_List_in_STS_Text_JOIN)
+
+#There are 5708 with both VitalSigns and STS information.
+
+#From our Vitalsign table, there are 390 Cases with no CPB Times Info.
+#Meaning there are 5318 Cases with all the info we need
+```
+
+# Anesthesia Induction (AI) and Anesthesia Finish (AF), Anesthesia Times Creation
+
+```{r}
+library(dplyr)
+
+Anesthesia_Times<-inner_join(Anesthesia_Induction_Times,Anesthesia_Finish_Times[,c('Case_Name','RECORDTIME')])
+
+Anesthesia_Times<-rename(Anesthesia_Times,"AF_Time"="RECORDTIME")
+Anesthesia_Times<-rename(Anesthesia_Times,"AI_Time"="Anesthesia Induction ( I )")
+```
+
+
+# First and End Times of VitalSigns, VitalSigns_Times creation
+
+```{r}
+library(dplyr)
+
+    VitalSigns_First <- VitalsignsF %>% 
+    group_by(Case_Name) %>% 
+    dplyr::select(c(Case_Name,Time)) %>%
+    arrange(Time)%>%
+    filter(!duplicated(Case_Name)) 
+    colnames(VitalSigns_First) <- c('Case_Name', 'VitalSigns_First_Time')
+    
+    VitalSigns_Last <- VitalsignsF %>% 
+    group_by(Case_Name) %>% 
+    dplyr::select(c(Case_Name,Time)) %>%
+    arrange(desc(Time))%>%
+    filter(!duplicated(Case_Name)) 
+    colnames(VitalSigns_Last) <- c('Case_Name', 'VitalSigns_Last_Time')
+    
+    VitalSigns_Times<-merge(VitalSigns_First, VitalSigns_Last)
+    
+```
+
+
+# Studying Surgery Begin and End Times discrepancies
+
+```{r}
+discrepancies_check<-inner_join(VitalSigns_Times,Anesthesia_Times)
+
+discrepancies_check$VitalSigns_First_Time<-as.character(discrepancies_check$VitalSigns_First_Time)
+discrepancies_check$VitalSigns_Last_Time<-as.character(discrepancies_check$VitalSigns_Last_Time)
+discrepancies_check$AI_Time<-as.character(discrepancies_check$AI_Time)
+discrepancies_check$AF_Time<-as.character(discrepancies_check$AF_Time)
+
+discrepancies_check$VitalSigns_First_Time<-as.POSIXct(discrepancies_check$VitalSigns_First_Time, format='%Y-%m-%d %H:%M:%S', tz="GMT")
+discrepancies_check$VitalSigns_Last_Time<-as.POSIXct(discrepancies_check$VitalSigns_Last_Time, format='%Y-%m-%d %H:%M:%S', tz="GMT")
+discrepancies_check$AI_Time<-as.POSIXct(discrepancies_check$AI_Time, format='%Y-%m-%d %H:%M:%S', tz="GMT")
+discrepancies_check$AF_Time<-as.POSIXct(discrepancies_check$AF_Time, format='%Y-%m-%d %H:%M:%S', tz="GMT")
+
+discrepancies_check['First_Difference']<-difftime(discrepancies_check$AI_Time,discrepancies_check$VitalSigns_First_Time,units = 'mins')
+discrepancies_check['Last_Difference']<-difftime(discrepancies_check$AF_Time,discrepancies_check$VitalSigns_Last_Time,units = 'mins')
+
+discrepancies_check$First_Difference<-as.numeric(discrepancies_check$First_Difference)
+discrepancies_check$Last_Difference<-as.numeric(discrepancies_check$Last_Difference)
+
+summary(discrepancies_check$First_Difference)
+hist(discrepancies_check$First_Difference,breaks = 100)
+
+summary(discrepancies_check$Last_Difference)
+hist(discrepancies_check$Last_Difference,breaks = 100)
+
+FinalHemodynamicsDataset%>%filter(duration_Surgery_min<=60)
+```
+
+
+# Start and End Times of CPB, rCPBEventsDF creation 
+
+In this part of the code we filter the Event table in order to extract only CPB related information, then we reshape the columns in order to have the begin and end time information available per case.
+
+```{r}
+library(dplyr)
+
+#We create a new dataset only containing CPB information
+
+for (name in names(EventsList)){
+      #EventCount<-paste('CPB',name, sep='')
+      EventCount<-EventsList[[name]]%>%
+            filter(Label == 'Bypass Begin' | 
+                   Label == 'Bypass End') 
+      assign(paste('CPB',name, sep=''), EventCount)
+  }
+
+#we store them in a list fot easily handling them in the future.
+CPBEventsList <- list(CPBEvents08, CPBEvents09, CPBEvents10,CPBEvents11,CPBEvents12,CPBEvents13,CPBEvents14,CPBEvents15,CPBEvents16)
+names( CPBEventsList)<- c("CPBEvents08", "CPBEvents09", "CPBEvents10", "CPBEvents11", "CPBEvents12", "CPBEvents13","CPBEvents14","CPBEvents15", "CPBEvents16")
+
+#we get rid of the columns we are not going to use.
+
+  for (name in names(CPBEventsList)){
+      #EventCount<-paste('CPB',name, sep='')
+      CPBEventsList[[name]]$ItemID<-NULL
+      CPBEventsList[[name]]$ESIG<-NULL
+      CPBEventsList[[name]]$ESIGNAMETEXT<-NULL
+      CPBEventsList[[name]]$ESIGDATEANDTIME<-NULL
+  }
+
+library(reshape)
+
+for (name in names(CPBEventsList)){
+  
+#Sometimes there are several CPB events during a case, we filter the dataframe taking only the first CPB_Begin timestamp and the last CPB_End timestamp in order to get the whole length.
+CPBEventsb <-subset(CPBEventsList[[name]], CPBEventsList[[name]]$Label=='Bypass Begin') 
+CPBEventsb<-CPBEventsb[order(CPBEventsb$Case_Name, CPBEventsb$Time, decreasing=FALSE),]
+CPBEventse <-subset(CPBEventsList[[name]], CPBEventsList[[name]]$Label=='Bypass End') 
+CPBEventse<-CPBEventse[order(CPBEventse$Case_Name, CPBEventse$Time, decreasing=TRUE),]
+
+CPBEventsf<-union_all(CPBEventsb, CPBEventse)
+
+#we create new dataframes for the rESHAPED tables
+BPE<-reshape(CPBEventsf, timevar = 'Label' , idvar = 'Case_Name', direction = 'wide')
+colnames(BPE)<-c('Case_Name','CPB_Begin_Time','CPB_End_Time')
+BPE<-subset(BPE,complete.cases(BPE))
+assign(paste('r',name, sep=''), BPE)
+}
+
+rCPBEventsDF <- rbind(rCPBEvents08, rCPBEvents09, rCPBEvents10,rCPBEvents11,rCPBEvents12,rCPBEvents13,rCPBEvents14,rCPBEvents15,rCPBEvents16)
+
+#there are 5541 cases with CPB times information.
+
+```
+
+# All duration_periods_min columns and AllPeriodsDF creation
+
+```{r}
+AllPeriodsDF<-inner_join(VitalSigns_Times,rCPBEventsDF)
+#From our Vitalsign table, there are 390 Cases with no CPB Times Info.
+#Meaning there are 5318 Cases with all the info we need
+# We are not interested on Cases with NO CPB informations, thus we exclude this cases.
+
+AllPeriodsDF['duration_preCPB_min']<-as.numeric(difftime(AllPeriodsDF$CPB_Begin_Time,AllPeriodsDF$VitalSigns_First_Time), units="mins")
+AllPeriodsDF["duration_CPB_min"] <-as.numeric(difftime(AllPeriodsDF$CPB_End_Time,AllPeriodsDF$CPB_Begin_Time), units="mins")
+BPE<-subset(BPE,complete.cases(BPE))
+AllPeriodsDF['duration_postCPB_min']<-as.numeric(difftime(AllPeriodsDF$VitalSigns_Last_Time,AllPeriodsDF$CPB_End_Time), units="mins")
+AllPeriodsDF['duration_Surgery_min']<-as.numeric(difftime(AllPeriodsDF$`VitalSigns_Last_Time`,AllPeriodsDF$`VitalSigns_First_Time`), units="mins")
+```
+
+
+

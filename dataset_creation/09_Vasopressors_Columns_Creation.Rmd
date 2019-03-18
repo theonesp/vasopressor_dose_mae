@@ -1,0 +1,122 @@
+---
+title: "Vasopressors Columns Creation"
+author: "Miguel Angel Armengol de la Hoz"
+date: "10 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#load the data
+library(dplyr)
+#load("~/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+```
+
+
+# Using the new Drugs total table
+
+
+DRUGTEXT
+
+-Excluded:
+ Calcium Chloride
+ Calcium Gluconate
+ Methylene Blue (Only 43 cases)
+
+
+-Group A:
+Phenylephrine
+Ephedrine
+Norepinephrine
+Vasopressin
+Norepinephrine (800/50)
+
+-Group B
+Milrinone
+Epinephrine
+
+
+## Load data and convert units
+
+```{r}
+library(readr)
+library(readxl)
+DrugTotals_forstudy <- read_csv("~/BIG FILES/Phenotyping/DrugTotals_forstudy.csv", 
+    col_types = readr::cols(DOS = col_date(format = "%m/%d/%Y"), 
+        Group = readr::col_factor(levels = c("A","B"))))
+
+#DrugTotals_forstudy<-
+#detach(package:plyr)
+DrugTotals_forstudy<-DrugTotals_forstudy %>% 
+mutate(converted_dose_mg=if_else(UNITOFMEASURETEXT=="mcg", round(DOSEAMOUNT/1000,2),round(DOSEAMOUNT,2)))
+
+#remove rows without drug info
+DrugTotals_forstudy<-DrugTotals_forstudy[!is.na(DrugTotals_forstudy$DRUGTEXT),]
+```
+
+
+
+# Drugs with formula
+
+generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinetotal / 10) + (dopaminetotal / weightkg / 2)
+
+*Final used Formula*
+generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinetotal / 10) + (milrinonetotal/5) + (vasopressin * 8.33)
+
+(milrinone equivalence added by clinical criteria)
+
+Ref: Mancl, E. E., & Muzevich, K. M. (2013). Tolerability and safety of enteral nutrition in critically ill patients receiving intravenous vasopressor therapy. Journal of parenteral and enteral nutrition, 37(5), 641-651.
+
+```{r}
+drugsinformula<-subset(DrugTotals_forstudy, DrugTotals_forstudy$DRUGTEXT %in% c("Phenylephrine",    "Epinephrine","Norepinephrine","Norepinephrine (800/50)","Milrinone","Vasopressin") )
+
+drugsinformula$DRUGTEXT[drugsinformula$DRUGTEXT=='Norepinephrine (800/50)']<-"Norepinephrine"
+drugsinformula$MRN<-NULL
+drugsinformula$DOS<-NULL                         
+drugsinformula$Vasopressor<-NULL
+drugsinformula$DRUGITEMID<-NULL
+drugsinformula$EZINDEX<-NULL
+drugsinformula$CONTAINERTEXT<-NULL
+
+drugsinformula<-drugsinformula %>% 
+  mutate(converted_dose_mg=if_else(UNITOFMEASURETEXT=="mcg", round(DOSEAMOUNT/1000,2),round(DOSEAMOUNT,2) )
+  )
+
+drugsinformula$DOSEAMOUNT<-NULL
+drugsinformula$UNITOFMEASURETEXT<-NULL
+
+library(dplyr)
+drugsinformula<-drugsinformula %>%
+dplyr::group_by(CASENUMBER, DRUGTEXT) %>%
+dplyr::summarise(total_indiv_drug=sum(converted_dose_mg))
+
+library(data.table)
+
+r_drugsinformula<-dcast(drugsinformula, CASENUMBER ~ DRUGTEXT, value.var='total_indiv_drug')
+r_drugsinformula[is.na(r_drugsinformula)]<-0
+
+#generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinetotal / 10) + milrinonetotal/5
+
+generate_vasopressors <- function(epinephrinetotal,norepinephrinetotal,phenylephrinetotal,milrinonetotal,vasopressintotal){
+return(epinephrinetotal+norepinephrinetotal+(phenylephrinetotal/10)+(milrinonetotal/5)+
+         (vasopressintotal * 8.33)
+       )
+}
+r_drugsinformula<-r_drugsinformula%>%
+  mutate(total_pressors_formula_mg=round(generate_vasopressors(Epinephrine, Norepinephrine,Phenylephrine,Milrinone,Vasopressin) ,3))
+colnames(r_drugsinformula)[1]<-'Case_Name'
+```
+
+
+
+
+
+
+
+
