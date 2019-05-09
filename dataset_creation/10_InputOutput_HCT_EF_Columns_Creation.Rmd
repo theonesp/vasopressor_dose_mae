@@ -54,19 +54,19 @@ EF<-inner_join(
 #let's first select only those columns we need
 
 IO_data_Blood_filtered<-IO_data_Blood %>%
-  select(Case_Name, RECORDTIME, Blood,VALUE)
+dplyr::select(Case_Name, RECORDTIME, Blood,VALUE)
 
 IO_data_Blood_filtered<-IO_data_Blood_filtered%>%
   dplyr::rename(Time=RECORDTIME)
 
 IO_data_Fluids_filtered<-IO_data_Fluids %>%
-  select(Case_Name, RECORDTIME, Fluid,VALUE)
+dplyr::select(Case_Name, RECORDTIME, Fluid,VALUE)
 
 IO_data_Fluids_filtered<-IO_data_Fluids_filtered%>%
   dplyr::rename(Time=RECORDTIME)
 
 IO_data_Urine_Output_filtered<-IO_data_Urine_Output %>%
-  select(Case_Name, RECORDTIME, VALUE)
+dplyr::select(Case_Name, RECORDTIME, VALUE)
 
 IO_data_Urine_Output_filtered<-IO_data_Urine_Output_filtered%>%
   dplyr::rename(Time=RECORDTIME)
@@ -74,10 +74,10 @@ IO_data_Urine_Output_filtered<-IO_data_Urine_Output_filtered%>%
 IO_data_Urine_Output_filtered['Urine_Output']<-'Urine_Output'
 
 First_HCT<-First_HCT%>%
-  select(Case_Name,result_name,result_value)
+dplyr::select(Case_Name,result_name,result_value)
 
 First_HCT_after_SurgTime<-First_HCT_after_SurgTime%>%
-  select(Case_Name,result_name,result_value)
+dplyr::select(Case_Name,result_name,result_value)
 ```
 
 # Sumarizing datasets
@@ -90,7 +90,7 @@ First_HCT_after_SurgTime<-First_HCT_after_SurgTime%>%
 my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.=T), NA)
 
 IO_data_Blood_summarized<-IO_data_Blood_filtered%>%
-  select(Case_Name,Blood,VALUE)%>%
+dplyr::select(Case_Name,Blood,VALUE)%>%
   cast(Case_Name~Blood,fun.aggregate = my.sum)
 
 IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
@@ -99,7 +99,7 @@ IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
          )
 
 IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
-  select(Case_Name,`Cell Saver`,Blood)
+dplyr::select(Case_Name,`Cell Saver`,Blood)
 
 IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
   dplyr::rename(Cell_Saver_ml=`Cell Saver`)%>%
@@ -115,7 +115,7 @@ IO_data_Blood_summarized<-IO_data_Blood_summarized%>%
 my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.rm=T), NA)
 
 IO_data_Fluids_summarized<-IO_data_Fluids_filtered%>%
-    select(Case_Name,Fluid,VALUE)%>%
+dplyr::select(Case_Name,Fluid,VALUE)%>%
   cast(Case_Name~Fluid,fun.aggregate = my.sum)
 
 IO_data_Fluids_summarized<-IO_data_Fluids_summarized%>%
@@ -125,7 +125,7 @@ IO_data_Fluids_summarized<-IO_data_Fluids_summarized%>%
          )
 
 IO_data_Fluids_summarized<-IO_data_Fluids_summarized%>%
-  select(Case_Name,Colloids_ml,Crystalloids_ml)
+dplyr::select(Case_Name,Colloids_ml,Crystalloids_ml)
 
 ```
 
@@ -137,7 +137,7 @@ IO_data_Fluids_summarized<-IO_data_Fluids_summarized%>%
 my.sum <- function(x) ifelse( !all(is.na(x)), sum(x, na.rm=T), NA)
 
 IO_data_Urine_Output_summarized<-IO_data_Urine_Output_filtered%>%
-  select(Case_Name,Urine_Output,VALUE)%>%
+dplyr::select(Case_Name,Urine_Output,VALUE)%>%
   cast(Case_Name~Urine_Output,fun.aggregate = my.sum)
 
 IO_data_Urine_Output_summarized<-IO_data_Urine_Output_summarized%>%dplyr::rename(Urine_Output_ml=Urine_Output)

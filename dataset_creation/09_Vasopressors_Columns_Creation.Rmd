@@ -19,7 +19,7 @@ library(dplyr)
 ```
 
 
-# Using the new Drugs total table
+#Using the new Drugs total table
 
 
 DRUGTEXT
@@ -56,6 +56,9 @@ DrugTotals_forstudy <- read_csv("~/BIG FILES/Phenotyping/DrugTotals_forstudy.csv
 DrugTotals_forstudy<-DrugTotals_forstudy %>% 
 mutate(converted_dose_mg=if_else(UNITOFMEASURETEXT=="mcg", round(DOSEAMOUNT/1000,2),round(DOSEAMOUNT,2)))
 
+#remove vasopresing so we can interpretate the dosing        
+#DrugTotals_forstudy<-DrugTotals_forstudy[!(DrugTotals_forstudy$DRUGTEXT=="Vasopressin"),]
+
 #remove rows without drug info
 DrugTotals_forstudy<-DrugTotals_forstudy[!is.na(DrugTotals_forstudy$DRUGTEXT),]
 ```
@@ -66,7 +69,6 @@ DrugTotals_forstudy<-DrugTotals_forstudy[!is.na(DrugTotals_forstudy$DRUGTEXT),]
 
 generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinetotal / 10) + (dopaminetotal / weightkg / 2)
 
-*Final used Formula*
 generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinetotal / 10) + (milrinonetotal/5) + (vasopressin * 8.33)
 
 (milrinone equivalence added by clinical criteria)
@@ -74,7 +76,7 @@ generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinet
 Ref: Mancl, E. E., & Muzevich, K. M. (2013). Tolerability and safety of enteral nutrition in critically ill patients receiving intravenous vasopressor therapy. Journal of parenteral and enteral nutrition, 37(5), 641-651.
 
 ```{r}
-drugsinformula<-subset(DrugTotals_forstudy, DrugTotals_forstudy$DRUGTEXT %in% c("Phenylephrine",    "Epinephrine","Norepinephrine","Norepinephrine (800/50)","Milrinone","Vasopressin") )
+drugsinformula<-subset(DrugTotals_forstudy, DrugTotals_forstudy$DRUGTEXT %in% c("Phenylephrine","Epinephrine","Norepinephrine","Norepinephrine (800/50)","Milrinone","Vasopressin") )
 
 drugsinformula$DRUGTEXT[drugsinformula$DRUGTEXT=='Norepinephrine (800/50)']<-"Norepinephrine"
 drugsinformula$MRN<-NULL
@@ -112,6 +114,369 @@ r_drugsinformula<-r_drugsinformula%>%
   mutate(total_pressors_formula_mg=round(generate_vasopressors(Epinephrine, Norepinephrine,Phenylephrine,Milrinone,Vasopressin) ,3))
 colnames(r_drugsinformula)[1]<-'Case_Name'
 ```
+
+
+#___NOT_USED______
+
+# Correcting NA
+
+```{r}
+# We are only interested on those Cases that have both Vitalsigns data and drug data
+r_drugsinformula<-inner_join(All_Cases, r_drugsinformula)
+r_drugsinformula[is.na(r_drugsinformula)]<-0
+
+#The join returned 5504 thus there are 204 cases with no drug invormation. We are making all those cases NA since we have no drug info about them.
+```
+
+
+#OLD Bolus Drugs
+
+##Bolus Drugs quantities
+
+```{r eval=FALSE, include=FALSE}
+library(dplyr)
+
+BolusDrugsDF <- rbind(BolusDrugs08, BolusDrugs09, BolusDrugs10,BolusDrugs11,BolusDrugs12,BolusDrugs13,BolusDrugs14,BolusDrugs15,BolusDrugs16)
+
+#After creating our DF, let's perform our filtering and table reshape
+
+BolusDrugsDF<-subset(BolusDrugsDF, BolusDrugsDF$Label!= 'Calcium Chloride' & BolusDrugsDF$Label != 'Calcium Gluconate')
+
+#BolusDrugsDF$Time<-NULL
+BolusDrugsDF$ItemID<-NULL
+BolusDrugsDF$Route<-NULL
+BolusDrugsDF$ESIG<-NULL
+BolusDrugsDF$ESIGNAMETEXT<-NULL
+BolusDrugsDF$ESIGDATEANDTIME<-NULL
+
+#unique(BolusDrugsDF$Label)
+
+BolusDrugsDF<-BolusDrugsDF %>% mutate(Phenylephrine= if_else(Label == 'Phenylephrine',1,0))
+BolusDrugsDF<-BolusDrugsDF %>% mutate(Epinephrine= if_else(Label == 'Epinephrine',1,0))
+BolusDrugsDF<-BolusDrugsDF %>% mutate('Norepinephrine (800/50)'= if_else(Label == 'Norepinephrine (800/50)' ,1,0))
+BolusDrugsDF<-BolusDrugsDF %>% mutate('Norepinephrine'= if_else(Label == 'Norepinephrine' ,1,0))
+BolusDrugsDF<-BolusDrugsDF %>% mutate('Vasopressin'= if_else(Label == 'Vasopressin' ,1,0))
+
+
+
+
+library(reshape)
+
+bolusdrugspercase<-reshape(BolusDrugsDF, timevar = 'Label' , idvar = 'Case_Name', direction = 'wide')
+
+#barplot(table(BolusDrugsDF$Units[BolusDrugsDF$Label=='Phenylephrine']))
+
+```
+
+##Bolus Drugs binary CPB location
+
+```{r eval=FALSE, include=FALSE}
+library(dplyr)
+
+BolusDrugsDF_CPBloc<- rbind(BolusDrugs08, BolusDrugs09, BolusDrugs10,BolusDrugs11,BolusDrugs12,BolusDrugs13,BolusDrugs14,BolusDrugs15,BolusDrugs16)
+
+#After creating our DF, let's perform our filtering and table reshape
+
+BolusDrugsDF_CPBloc<-subset(BolusDrugsDF_CPBloc, BolusDrugsDF_CPBloc$Label!='Calcium Chloride' & BolusDrugsDF_CPBloc$Label != 'Calcium Gluconate')
+
+#BolusDrugsDF_CPBloc$Time<-NULL
+BolusDrugsDF_CPBloc$ItemID<-NULL
+BolusDrugsDF_CPBloc$Route<-NULL
+BolusDrugsDF_CPBloc$ESIG<-NULL
+BolusDrugsDF_CPBloc$ESIGNAMETEXT<-NULL
+BolusDrugsDF_CPBloc$ESIGDATEANDTIME<-NULL
+
+#merge the datasets we need
+BolusDrugsDF_CPBloc<-merge(BolusDrugsDF_CPBloc, rCPBEventsDF)
+
+##Add the bypass begin and end for comparation
+
+#preCPB
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Phenylephrine_preCPB = if_else(Label == 'Phenylephrine' & Time < CPB_Begin_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_preCPB = if_else(Label == 'Epinephrine' & Time < CPB_Begin_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_preCPB= if_else(Label == 'Epinephrine'& Time < CPB_Begin_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_preCPB'= if_else(Label == 'Norepinephrine (800/50)' & Time < CPB_Begin_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine_preCPB'= if_else(Label == 'Norepinephrine' & Time < CPB_Begin_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Vasopressin_preCPB= if_else(Label == 'Vasopressin' & Time < CPB_Begin_Time ,1,0))
+
+
+#CPB
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Phenylephrine_CPB = if_else(Label == 'Phenylephrine' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_CPB = if_else(Label == 'Epinephrine' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_CPB= if_else(Label == 'Epinephrine'& Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_CPB'= if_else(Label == 'Norepinephrine (800/50)' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine_CPB'= if_else(Label == 'Norepinephrine' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Vasopressin_CPB= if_else(Label == 'Vasopressin' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+
+
+#postCPB
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Phenylephrine_postCPB = if_else(Label == 'Phenylephrine' & Time > CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_postCPB = if_else(Label == 'Epinephrine' & Time > CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_postCPB= if_else(Label == 'Epinephrine'& Time > CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_postCPB'= if_else(Label == 'Norepinephrine (800/50)' & Time > CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine_postCPB'= if_else(Label == 'Norepinephrine' & Time > CPB_End_Time ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Vasopressin_postCPB= if_else(Label == 'Vasopressin' & Time > CPB_End_Time ,1,0))
+
+#total
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Phenylephrine_total = if_else(Label == 'Phenylephrine' ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_total = if_else(Label == 'Epinephrine' ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Epinephrine_total= if_else(Label == 'Epinephrine',1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_total'= if_else(Label == 'Norepinephrine (800/50)' ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate('Norepinephrine_total'= if_else(Label == 'Norepinephrine' ,1,0))
+BolusDrugsDF_CPBloc<-BolusDrugsDF_CPBloc %>% mutate(Vasopressin_total= if_else(Label == 'Vasopressin' ,1,0))
+
+#We summarize the information so we just know if there was or not an infusion of a certain drug per CPB petiod per case
+
+BolusDrugsDF_CPBloc_final<-subset(BolusDrugsDF_CPBloc, select = -c(2:8))
+
+library(dplyr)
+
+#preCPB
+BolusDrugsDF_bloc_sum<-setNames(aggregate(BolusDrugsDF_CPBloc_final$Phenylephrine_preCPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_bolus_preCPB"))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Epinephrine_preCPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_bolus_preCPB")))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine(800/50)_preCPB`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_bolus_preCPB')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine_preCPB`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_bolus_preCPB')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Vasopressin_preCPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_bolus_preCPB')))
+
+
+#CPB
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum,
+setNames(aggregate(BolusDrugsDF_CPBloc_final$Phenylephrine_CPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_bolus_CPB")))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Epinephrine_CPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_bolus_CPB")))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine(800/50)_CPB`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_bolus_CPB')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine_CPB`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_bolus_CPB')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Vasopressin_CPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_bolus_CPB')))
+
+
+#postCPB
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum,
+setNames(aggregate(BolusDrugsDF_CPBloc_final$Phenylephrine_postCPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_bolus_postCPB")))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Epinephrine_postCPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_bolus_postCPB")))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine(800/50)_postCPB`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_bolus_postCPB')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine_postCPB`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_bolus_postCPB')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Vasopressin_postCPB, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_bolus_postCPB')))
+
+#total
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum,
+setNames(aggregate(BolusDrugsDF_CPBloc_final$Phenylephrine_total, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_bolus_total")))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Epinephrine_total, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_bolus_total")))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine(800/50)_total`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_bolus_total')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$`Norepinephrine_total`, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_bolus_total')))
+BolusDrugsDF_bloc_sum<-merge(BolusDrugsDF_bloc_sum, setNames(aggregate(BolusDrugsDF_CPBloc_final$Vasopressin_total, by=list(Case_Name=BolusDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_bolus_total')))
+
+
+#in the following code we get rid of the quantity and convert it to boolean
+BolusDrugs.bin<-replace(BolusDrugsDF_bloc_sum, BolusDrugsDF_bloc_sum > 0, 1)
+BolusDrugs.bin<-sapply(BolusDrugs.bin, as.factor)
+BolusDrugs.bin<-as.data.frame(BolusDrugs.bin)
+
+#we exclude those cases not present in our cohort (STS+AIMS join)
+BolusDrugs.bin<-inner_join(, BolusDrugs.bin)
+
+
+```
+
+
+# OLD Infusion Drugs
+
+##Infusion Drugs quantities
+
+```{r eval=FALSE, include=FALSE}
+library(dplyr)
+
+InfusionDrugsDF <- rbind(InfusionDrugs08, InfusionDrugs09, InfusionDrugs10,InfusionDrugs11,InfusionDrugs12,InfusionDrugs13,InfusionDrugs14,InfusionDrugs15,InfusionDrugs16)
+
+#InfusionDrugsDF$Time<-NULL
+InfusionDrugsDF$ItemID<-NULL
+InfusionDrugsDF$Route<-NULL
+InfusionDrugsDF$ESIG<-NULL
+InfusionDrugsDF$ESIGNAMETEXT<-NULL
+InfusionDrugsDF$ESIGDATEANDTIME<-NULL
+
+#unique(InfusionDrugsDF$Label)
+
+InfusionDrugsDF<-InfusionDrugsDF %>% mutate(Phenylephrine= if_else(Label == 'Phenylephrine',1,0))
+InfusionDrugsDF<-InfusionDrugsDF %>% mutate(Epinephrine= if_else(Label == 'Epinephrine',1,0))
+InfusionDrugsDF<-InfusionDrugsDF %>% mutate('Norepinephrine (800/50)'= if_else(Label == 'Norepinephrine (800/50)' ,1,0))
+InfusionDrugsDF<-InfusionDrugsDF %>% mutate('Norepinephrine'= if_else(Label == 'Norepinephrine' ,1,0))
+InfusionDrugsDF<-InfusionDrugsDF %>% mutate('Vasopressin'= if_else(Label == 'Vasopressin' ,1,0))
+
+
+
+
+library(reshape)
+
+Infusiondrugspercase<-reshape(InfusionDrugsDF, timevar = 'Label' , idvar = 'Case_Name', direction = 'wide')
+
+#barplot(table(InfusionDrugsDF$Units[InfusionDrugsDF$Label=='Phenylephrine']))
+
+```
+
+##Infusion Drugs binary CPB location
+
+```{r eval=FALSE, include=FALSE}
+library(dplyr)
+
+InfusionDrugsDF_CPBloc<- rbind(InfusionDrugs08, InfusionDrugs09, InfusionDrugs10,InfusionDrugs11,InfusionDrugs12,InfusionDrugs13,InfusionDrugs14,InfusionDrugs15,InfusionDrugs16)
+
+#After creating our DF, let's perform our filtering and table reshape
+
+InfusionDrugsDF_CPBloc<-subset(InfusionDrugsDF_CPBloc, InfusionDrugsDF_CPBloc$Label!='Calcium Chloride' & InfusionDrugsDF_CPBloc$Label != 'Calcium Gluconate')
+
+#InfusionDrugsDF_CPBloc$Time<-NULL
+InfusionDrugsDF_CPBloc$ItemID<-NULL
+InfusionDrugsDF_CPBloc$Route<-NULL
+InfusionDrugsDF_CPBloc$ESIG<-NULL
+InfusionDrugsDF_CPBloc$ESIGNAMETEXT<-NULL
+InfusionDrugsDF_CPBloc$ESIGDATEANDTIME<-NULL
+
+#merge the datasets we need
+InfusionDrugsDF_CPBloc<-merge(InfusionDrugsDF_CPBloc, rCPBEventsDF)
+
+##Add the bypass begin and end for comparation
+
+#preCPB
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Phenylephrine_preCPB = if_else(Label == 'Phenylephrine' & Time < CPB_Begin_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_preCPB = if_else(Label == 'Epinephrine' & Time < CPB_Begin_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_preCPB= if_else(Label == 'Epinephrine'& Time < CPB_Begin_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_preCPB'= if_else(Label == 'Norepinephrine (800/50)' & Time < CPB_Begin_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine_preCPB'= if_else(Label == 'Norepinephrine' & Time < CPB_Begin_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Vasopressin_preCPB= if_else(Label == 'Vasopressin' & Time < CPB_Begin_Time ,1,0))
+
+
+#CPB
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Phenylephrine_CPB = if_else(Label == 'Phenylephrine' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_CPB = if_else(Label == 'Epinephrine' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_CPB= if_else(Label == 'Epinephrine'& Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_CPB'= if_else(Label == 'Norepinephrine (800/50)' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine_CPB'= if_else(Label == 'Norepinephrine' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Vasopressin_CPB= if_else(Label == 'Vasopressin' & Time >= CPB_Begin_Time & Time <= CPB_End_Time ,1,0))
+
+
+#postCPB
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Phenylephrine_postCPB = if_else(Label == 'Phenylephrine' & Time > CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_postCPB = if_else(Label == 'Epinephrine' & Time > CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_postCPB= if_else(Label == 'Epinephrine'& Time > CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_postCPB'= if_else(Label == 'Norepinephrine (800/50)' & Time > CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine_postCPB'= if_else(Label == 'Norepinephrine' & Time > CPB_End_Time ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Vasopressin_postCPB= if_else(Label == 'Vasopressin' & Time > CPB_End_Time ,1,0))
+
+#total
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Phenylephrine_total = if_else(Label == 'Phenylephrine' ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_total = if_else(Label == 'Epinephrine' ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Epinephrine_total= if_else(Label == 'Epinephrine',1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine(800/50)_total'= if_else(Label == 'Norepinephrine (800/50)' ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate('Norepinephrine_total'= if_else(Label == 'Norepinephrine' ,1,0))
+InfusionDrugsDF_CPBloc<-InfusionDrugsDF_CPBloc %>% mutate(Vasopressin_total= if_else(Label == 'Vasopressin' ,1,0))
+
+#We summarize the information so we just know if there was or not an infusion of a certain drug per CPB petiod per case
+
+InfusionDrugsDF_CPBloc_final<-subset(InfusionDrugsDF_CPBloc, select = -c(2:8))
+
+library(dplyr)
+
+#preCPB
+InfusionDrugsDF_bloc_sum<-setNames(aggregate(InfusionDrugsDF_CPBloc_final$Phenylephrine_preCPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_Infusion_preCPB"))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Epinephrine_preCPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_Infusion_preCPB")))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine(800/50)_preCPB`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_Infusion_preCPB')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine_preCPB`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_Infusion_preCPB')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Vasopressin_preCPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_Infusion_preCPB')))
+
+
+#CPB
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum,
+setNames(aggregate(InfusionDrugsDF_CPBloc_final$Phenylephrine_CPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_Infusion_CPB")))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Epinephrine_CPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_Infusion_CPB")))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine(800/50)_CPB`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_Infusion_CPB')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine_CPB`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_Infusion_CPB')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Vasopressin_CPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_Infusion_CPB')))
+
+
+#postCPB
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum,
+setNames(aggregate(InfusionDrugsDF_CPBloc_final$Phenylephrine_postCPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_Infusion_postCPB")))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Epinephrine_postCPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_Infusion_postCPB")))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine(800/50)_postCPB`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_Infusion_postCPB')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine_postCPB`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_Infusion_postCPB')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Vasopressin_postCPB, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_Infusion_postCPB')))
+
+#total
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum,
+setNames(aggregate(InfusionDrugsDF_CPBloc_final$Phenylephrine_total, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Phenylephrine_Infusion_total")))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Epinephrine_total, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", "Epinephrine_Infusion_total")))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine(800/50)_total`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine(800/50)_Infusion_total')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$`Norepinephrine_total`, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Norepinephrine_Infusion_total')))
+InfusionDrugsDF_bloc_sum<-merge(InfusionDrugsDF_bloc_sum, setNames(aggregate(InfusionDrugsDF_CPBloc_final$Vasopressin_total, by=list(Case_Name=InfusionDrugsDF_CPBloc_final$Case_Name), FUN=sum), c("Case_Name", 'Vasopressin_Infusion_total')))
+
+
+#in the following code we get rid of the quantity and convert it to boolean
+InfusionDrugs.bin<-replace(InfusionDrugsDF_bloc_sum, InfusionDrugsDF_bloc_sum > 0, 1)
+InfusionDrugs.bin<-sapply(InfusionDrugs.bin, as.factor)
+
+InfusionDrugs.bin<-as.data.frame(InfusionDrugs.bin)
+
+
+
+```
+
+
+```{r}
+generate_vasopressors <- function(epinephrine_total, norepinephrine_total, phenylephrine_total ){
+generate_vasopressors = epinephrine_total + norepinephrine_total + (phenylephrine_total/10)
+return(generate_vasopressors)
+}
+```
+
+# OLD Units normalization
+
+## Study data
+```{r eval=FALSE, include=FALSE}
+library(dplyr)
+BolusDrugsDF %>% 
+  group_by(Label, Units)  %>% 
+  summarise(n = n()) %>%
+  arrange(Label,desc(n))
+
+library(dplyr)
+InfusionDrugsDF %>% 
+  group_by(Label, Dose_Units)  %>% 
+  summarise(n = n()) %>%
+  arrange(Label,desc(n))
+
+```
+
+
+# OLD Groups
+
+## Calculating total doses in group A pressors per case
+
+```{r eval=FALSE, include=FALSE}
+library(plyr)
+detach(package:plyr)
+library(dplyr)
+drugTotalspercase_and_drug<-subset(DrugTotals_forstudy, Group=='A') %>%
+    group_by(CASENUMBER, DRUGTEXT) %>%
+  mutate(total_drug = cumsum(converted_dose_mg))
+
+drugs_groupA_percase<-drugTotalspercase_and_drug %>% group_by(CASENUMBER) %>% dplyr::summarize(total_groupA = max(total_drug))
+
+names(drugs_groupA_percase)[1]<-'Case_Name'
+      
+```
+
+## Calculating total doses in group B pressors per case
+
+```{r eval=FALSE, include=FALSE}
+library(dplyr)
+drugTotalspercase_and_drug<-subset(DrugTotals_forstudy, Group=='B') %>%
+    group_by(CASENUMBER) %>%
+  mutate(total_drug = cumsum(converted_dose_mg))
+
+drugs_groupB_percase<-drugTotalspercase_and_drug %>% group_by(CASENUMBER) %>% summarise(total_groupB = max(total_drug))
+
+names(drugs_groupB_percase)[1]<-'Case_Name'     
+```
+
 
 
 

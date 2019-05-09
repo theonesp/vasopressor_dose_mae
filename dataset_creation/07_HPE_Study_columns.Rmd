@@ -14,7 +14,7 @@ output:
 
 #load libs
 library(dplyr)
-#library(xlsx)
+library(xlsx)
 library(compare)
 ```
 
@@ -419,7 +419,13 @@ group_by(Case_Name)%>%
 summarise(AUC65MAP_total_mmHgmin = sum(rectangle)) %>%
 arrange(Case_Name)
 
-# AUT65MAP<-left_join(All_Cases, AUT65MAP)
+AUC65MAP_CPB<-VitalsignsandCPBTimes %>%
+dplyr::group_by(Case_Name) %>%
+dplyr::filter(CPB==1 & MAP <65) %>%
+mutate(rectangle=(65-MAP)*0.25) %>%
+group_by(Case_Name)%>%
+summarise(AUC65MAP_CPB_total_mmHgmin = sum(rectangle)) %>%
+arrange(Case_Name)
 
 ```
 
@@ -445,11 +451,17 @@ arrange(Case_Name)
 TWA-MAP under 65 mmHg dataset creation
 
 ```{r}
-
+require(dplyr)
 All_AUC65MAP_variables<-left_join(AllPeriodsDF,AUC65MAP)%>%
 dplyr::select(Case_Name, duration_Surgery_min,AUC65MAP_total_mmHgmin)%>%
-  mutate(TWA65MAP_total_mmHg=round(AUC65MAP_total_mmHgmin/duration_Surgery_min,2)) %>%
-  select(Case_Name,AUC65MAP_total_mmHgmin,TWA65MAP_total_mmHg)
+mutate(TWA65MAP_total_mmHg=round(AUC65MAP_total_mmHgmin/duration_Surgery_min,2)) %>%
+dplyr::select(Case_Name,AUC65MAP_total_mmHgmin,TWA65MAP_total_mmHg)
+
+All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables,AUC65MAP_CPB)
+#In case we want to add  TWA:
+# dplyr::select(Case_Name, duration_Surgery_min,AUC65MAP_CPB_total_mmHgmin)%>%
+#   mutate(TWA65MAP_total_mmHg=round(AUC65MAP_total_mmHgmin/duration_Surgery_min,2)) %>%
+#   select(Case_Name,AUC65MAP_total_mmHgmin,TWA65MAP_total_mmHg)
 
 All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables, AOC65MAP)
 # those that didn't have values <65 or >=65 spent 0 minutes in the threshold.

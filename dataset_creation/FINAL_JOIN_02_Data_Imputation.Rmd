@@ -85,5 +85,15 @@ is.na(FinalHemodynamicsDataset$delta_HCT_pct)
 )
 ```
 
+## Cross Clamp Time
+
+```{r}
+FinalHemodynamicsDataset['Cross_Clamp_Time_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$Cross_Clamp_Time)
+,median(FinalHemodynamicsDataset$Cross_Clamp_Time,na.rm = T)
+,as.double(FinalHemodynamicsDataset$Cross_Clamp_Time)
+)
+```
+
 
 
