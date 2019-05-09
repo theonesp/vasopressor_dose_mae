@@ -1,9 +1,3 @@
-Code
-
--   [Show All Code](#)
--   [Hide All Code](#)
--   -   [Download Rmd](#)
-
 Table1 
 ======
 
