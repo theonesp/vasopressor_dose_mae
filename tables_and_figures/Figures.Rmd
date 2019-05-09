@@ -28,7 +28,7 @@ library(xlsx)
 
 # Plots
 
-## Wrangling Q and T datasets for plotting
+## Wrangling the dataset for plotting
 
 ```{r eval=FALSE, include=FALSE}
 ###IMPORTANT detach plyr!!
@@ -206,6 +206,336 @@ write.xlsx(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix,
 'Q_TWA65MAP_total_mmHg_pressors_MAE_matrix.xlsx')
 ```
 
+
+# 3D Tertiles in R
+
+```{r}
+library('plot3D')
+
+
+
+hist3D( main =  paste("T AUT50MAP Plot\n Number of Cases =", sum(T_AUT50MAP_total_min_pressors_MAE_matrix))
+   , x = c(1:3)
+   , y = c(1:3)
+   , z = T_AUT50MAP_total_min_pressors_MAE_matrix
+   , scale = F, expand = 0.01, bty = "b2", phi = 20, col = "#1e8bc3"
+   , border = "white", shade = 0.5, ltheta = 90
+   , space = 0.3 #space between bars
+   , ticktype = "detailed", d = 2
+   ,resfac=3 #resolution
+   ,xlab='T AUT50MAP total'
+   ,ylab='T total pressors'
+   ,zlab='patients with Any MAE'
+   ,zlim=c(0,170))
+
+hist3D( main =  paste("T AUT65MAP Plot\n Number of Cases =", sum(T_AUT65MAP_total_min_pressors_MAE_matrix))
+   , x = c(1:3)
+   , y = c(1:3)
+   , z = T_AUT65MAP_total_min_pressors_MAE_matrix
+   , scale = F, expand = 0.01, bty = "b2", phi = 20, col = "#1e8bc3"
+   , border = "white", shade = 0.5, ltheta = 90
+   , space = 0.3 #space between bars
+   , ticktype = "detailed", d = 2
+   ,resfac=3 #resolution
+   ,xlab='T AUT65MAP total'
+   ,ylab='T total pressors'
+   ,zlab='patients with Any MAE'
+   ,zlim=c(0,170))
+
+# Make the rgl version
+# Animated version
+# library("plot3Drgl")
+# plotrgl()
+```
+
+# 3D Quartiles in R
+
+```{r}
+library('plot3D')
+
+hist3D( main =  paste("Q AUT50MAP Plot\n Number of Cases =", sum(Q_AUT50MAP_total_min_pressors_MAE_matrix))
+   , x = c(1:4)
+   , y = c(1:4)
+   , z = Q_AUT50MAP_total_min_pressors_MAE_matrix
+   , scale = F, expand = 0.01, bty = "b2", phi = 20, col = "#1e8bc3"
+   , border = "white", shade = 0.5, ltheta = 90
+   , space = 0.3 #space between bars
+   , ticktype = "detailed", d = 2
+   ,resfac=3 #resolution
+   ,xlab='Q AUT50MAP total'
+   ,ylab='Q total pressors'
+   ,zlab='patients with Any MAE'
+   ,zlim=c(0,170))
+
+hist3D( main =  paste("Q AUT65MAP Plot\n Number of Cases =", sum(Q_AUT65MAP_total_min_pressors_MAE_matrix))
+   , x = c(1:4)
+   , y = c(1:4)
+   , z = Q_AUT65MAP_total_min_pressors_MAE_matrix
+   , scale = F, expand = 0.01, bty = "b2", phi = 20, col = "#1e8bc3"
+   , border = "white", shade = 0.5, ltheta = 90
+   , space = 0.3 #space between bars
+   , ticktype = "detailed", d = 2
+   ,resfac=3 #resolution
+   ,xlab='Q AUT65MAP total'
+   ,ylab='Q total pressors'
+   ,zlab='patients with Any MAE'
+   ,zlim=c(0,170))
+
+
+```
+
+# 2D Plots
+
+## Quartiles
+
+## Q_AUT50MAP_total_min_pressors_MAE 2D test
+
+### Q_AUT50MAP_total_min
+
+```{r eval=FALSE, include=FALSE}
+library(plotly)
+library(dplyr)
+library(scales)
+  
+p1<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_total_pressors_formula_mg==1) %>%
+  dplyr::group_by(Q_AUT50MAP_total_min) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(  x = ~Q_AUT50MAP_total_min
+          , y= ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="OrRd")(9)[5] )
+          , name = 'Q1 pressors(mg) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+
+p2<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_total_pressors_formula_mg==2) %>%
+  dplyr::group_by(Q_AUT50MAP_total_min) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(  x = ~Q_AUT50MAP_total_min
+          , y = ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="OrRd")(9)[6] )
+          , name = 'Q2 pressors(mg) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+
+p3<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_total_pressors_formula_mg==3) %>%
+  dplyr::group_by(Q_AUT50MAP_total_min) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(  x = ~Q_AUT50MAP_total_min
+          , y = ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="OrRd")(9)[7] )
+          , name = 'Q3 pressors(mg) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+
+p4<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_total_pressors_formula_mg==4) %>%
+  dplyr::group_by(Q_AUT50MAP_total_min) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(  x = ~Q_AUT50MAP_total_min
+          , y = ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="OrRd")(9)[8] )
+          , name = 'Q4 pressors(mg) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+
+library(plotly)
+plotly::subplot(p1, p2, p3, p4,nrows = 2,titleY = T,titleX = T,shareX = T,shareY = T) %>% 
+   layout(
+       title = paste('Total_Patients with Any_MAE: ', sum(Q_AUT50MAP_total_min_pressors_MAE$total_patientswith_MAE))
+     )
+
+```
+
+
+### Q_total_pressors_formula_mg
+
+```{r}
+library(plotly)
+library(dplyr)
+library(scales)
+  
+p1<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_AUT50MAP_total_min==1) %>%
+  dplyr::group_by(Q_total_pressors_formula_mg) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(    x = ~Q_total_pressors_formula_mg
+          , y= ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="Blues")(9)[5] )
+          , name = 'Q1 AUT50MAP (mins) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+
+p2<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_AUT50MAP_total_min==2) %>%
+  dplyr::group_by(Q_total_pressors_formula_mg) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(    x = ~Q_total_pressors_formula_mg
+          , y = ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="Blues")(9)[6] )
+          , name = 'Q2 AUT50MAP (mins) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+
+p3<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_AUT50MAP_total_min==3) %>%
+  dplyr::group_by(Q_total_pressors_formula_mg) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(    x = ~Q_total_pressors_formula_mg
+          , y = ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="Blues")(9)[7] )
+          , name = 'Q3 AUT50MAP (mins) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+
+p4<-Q_AUT50MAP_total_min_pressors_MAE %>%
+  dplyr::filter(Q_AUT50MAP_total_min==4) %>%
+  dplyr::group_by(Q_total_pressors_formula_mg) %>%
+  dplyr::summarise(total_patientswith_MAE=sum(total_patientswith_MAE)) %>%
+  plot_ly(    x = ~Q_total_pressors_formula_mg
+          , y = ~total_patientswith_MAE
+          , type = 'bar'
+          , marker = list(color = brewer_pal(palette="Blues")(9)[8] )
+          , name = 'Q4 AUT50MAP (mins) '
+          ) %>%layout(  yaxis = list(range = c(0, 170))    )
+library(plotly)
+pfinal<-plotly::subplot(p1, p2, p3, p4,nrows = 2,titleY = T,titleX = T,shareX = T,shareY = T) %>% 
+   layout(
+       title = paste('Total_Patients with Any_MAE: ', sum(Q_AUT50MAP_total_min_pressors_MAE$total_patientswith_MAE))
+     )
+
+```
+
+# Boxplot for all the bands MAP
+
+```{r}
+library(dplyr)
+library(plotly)
+library(RColorBrewer)
+palette <- brewer.pal(9, "Set1")
+
+# annotations
+a <- list(
+  text = "Mean Arterial Pressure Bands and time in minutes patients spent on that band.",
+  font = list(size = 16),
+  xref = "paper",
+  yref = "paper",
+  yanchor = "bottom",
+  xanchor = "center",
+  align = "center",
+  x = 0.5,
+  y = 1,
+  showarrow = FALSE
+)
+
+x <- list( title = "Total time spent in a given threshold (min)" )
+p1 <- plot_ly(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==0,]$AUT65MAP_total_min, type = "box",name = "<65 No MAE"
+               ,marker = list(color = '#2ecc71'),opacity = 0.8, line = list(color = '#27ae60')) %>%
+  add_trace(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==1,]$AUT65MAP_total_min,name = "<65 Any MAE"
+               ,marker = list(color = '#e74c3c'),opacity = 0.8, line = list(color = '#c0392b')) %>%  
+  
+  add_trace(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==0,]$AOT65MAP_total_min,name = ">65 No MAE"
+               ,marker = list(color = '#2ecc71'),opacity = 0.8, line = list(color = '#27ae60')) %>%
+  add_trace(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==1,]$AOT65MAP_total_min,name = ">65 Any MAE"
+               ,marker = list(color = '#e74c3c'),opacity = 0.8, line = list(color = '#c0392b')) %>%
+
+ 
+
+
+  layout(showlegend = F,xaxis = x
+         #, yaxis = list(range=c(0,800))
+         , annotations = a)  
+
+
+#htmlwidgets::saveWidget(sp1, "boxplots.html")
+```
+
+# Boxplot for threshold <=65
+
+```{r}
+library(dplyr)
+library(plotly)
+library(RColorBrewer)
+palette <- brewer.pal(9, "Set1")
+
+# annotations
+a <- list(
+  text = "MAP < 65 mmHg duration per group",
+  font = list(size = 16),
+  xref = "paper",
+  yref = "paper",
+  yanchor = "bottom",
+  xanchor = "center",
+  align = "center",
+  x = 0.5,
+  y = 1,
+  showarrow = FALSE
+)
+
+y <- list( title = "Total duration (min)" )
+x <- list( title = "Groups" )
+p1 <- plot_ly(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==0,]$AUT65MAP_total_min, type = "box",name = "Absent MAE"
+               ,marker = list(color = '#2ecc71'),opacity = 0.8, line = list(color = '#27ae60')) %>%
+  add_trace(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==1,]$AUT65MAP_total_min,name = "Present MAE"
+               ,marker = list(color = '#e74c3c'),opacity = 0.8, line = list(color = '#c0392b')) %>%  
+  
+  add_trace(y = FinalHemodynamicsDataset$AUT65MAP_total_min,name = "All patients"
+               ,marker = list(color = '#2980b9'),opacity = 0.8, line = list(color = '#2980b9')) %>%    
+
+  layout(showlegend = F
+         , xaxis = x
+         , yaxis = y
+         , annotations = a)  
+
+a <- list(
+  text = "AUC MAP < 65 mmHg",
+  font = list(size = 16),
+  xref = "paper",
+  yref = "paper",
+  yanchor = "bottom",
+  xanchor = "center",
+  align = "center",
+  x = 0.5,
+  y = 1,
+  showarrow = FALSE
+)
+
+y <- list( title = "Area under the curve (mmHg•min)" )
+x <- list( title = "Groups" )
+p2 <- plot_ly(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==0,]$AUC65MAP_total_mmHgmin, type = "box",name = "Absent MAE"
+               ,marker = list(color = '#2ecc71'),opacity = 0.8, line = list(color = '#27ae60')) %>%
+  add_trace(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==1,]$AUC65MAP_total_mmHgmin,name = "Present MAE"
+               ,marker = list(color = '#e74c3c'),opacity = 0.8, line = list(color = '#c0392b')) %>%  
+  
+  add_trace(y = FinalHemodynamicsDataset$AUC65MAP_total_mmHgmin,name = "All patients"
+               ,marker = list(color = '#2980b9'),opacity = 0.8, line = list(color = '#2980b9')) %>%    
+
+  layout(showlegend = F
+         , xaxis = x
+         , yaxis = y
+         , annotations = a)  
+
+#htmlwidgets::saveWidget(sp1, "boxplots.html")
+```
+
+
+# Correlations
+
+```{r}
+
+sapply(relevant_data_imputed, class)
+
+cor_periods_min<-cor(relevant_data_imputed[,c('Age','duration_Surgery_min','total_pressors_formula_mg','STS_RiskAlgorithm_mean_imp')])
+
+#non interactive circle corplot
+cortable<-corrplot(cor_periods_min, method = "circle")
+
+write.xlsx(as.data.frame(print(cortable)), "cortable.xlsx")
+
+```
+
 # Odd Ratio Plots
 
 # General model
@@ -215,7 +545,7 @@ write.xlsx(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix,
 
 df <- oddsratios_table
 
-labels<-c('Age', 'Category: Aortic Surgery', 'Category: CABG + Valve', 'Category: Other', 'Category: Valve', 'delta HCT pct', 'Gender: Female', 'Mean EF','AUC MAP 65 mmHg Q2', 'AUC MAP 65 mmHg Q3', 'AUC MAP 65 mmHg Q4', 'total pressors formula mg Q2', 'total pressors formula mg Q3', 'total pressors formula mg Q4', 'STS Risk Algorithm Tertile 2', 'STS Risk Algorithm Tertile 3')
+labels<-c('Age', 'Category: Aortic Surgery', 'Category: CABG + Valve', 'Category: Other', 'Category: Valve', 'Cross Clamp Time' ,'delta HCT pct', 'Gender: Female', 'Mean EF','AUC MAP 65 mmHg Q2', 'AUC MAP 65 mmHg Q3', 'AUC MAP 65 mmHg Q4', 'total pressors formula mg Q2', 'total pressors formula mg Q3', 'total pressors formula mg Q4', 'STS Risk Algorithm Tertile 2', 'STS Risk Algorithm Tertile 3')
 number_of_exposures<-length(labels)+1
 
 df <- data.frame(yAxis = 2:number_of_exposures,
@@ -241,6 +571,8 @@ p<-ggplot(df, aes(x = boxOdds
   ylab("Exposure") +
   xlab("Odds ratio") +
   ggtitle("Impact on Any MAE")
+
+p<-ggplotly(p%>%layout(hovermode = 'compare'))
 
 ```
 
