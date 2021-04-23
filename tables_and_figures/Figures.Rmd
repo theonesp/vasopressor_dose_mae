@@ -1,3 +1,4 @@
+
 ---
 title: "Quantiles"
 author: "Miguel Ángel Armengol de la Hoz"
@@ -7,15 +8,20 @@ output:
     theme: united
 ---
 
-# Libs
+# Environment
 
 ```{r}
 library(dplyr)
 library(plotly)
-#library(corrplot)
+library(corrplot)
 library(Hmisc)
 #library(officer)
 library(xlsx)
+library(plot3D)
+library(ggeffects)
+library(mgcv)
+library(tidyverse)
+library(mgcViz)
 ```
 
 
@@ -30,154 +36,31 @@ library(xlsx)
 
 ## Wrangling the dataset for plotting
 
+Now we are using RFDS as output instead of MAE.
+
 ```{r eval=FALSE, include=FALSE}
 ###IMPORTANT detach plyr!!
 #detach('package:plyr')
 
 
-#Tertiles
-
-T_AUT50MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset %>%
-dplyr::group_by(T_AUT50MAP_total_min, T_total_pressors_formula_mg)%>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518)
-T_AUT50MAP_total_min_pressors_MAE<-T_AUT50MAP_total_min_pressors_MAE[complete.cases(T_AUT50MAP_total_min_pressors_MAE), ]
-library(reshape)
-T_AUT50MAP_total_min_pressors_MAE_matrix<-cast(data=T_AUT50MAP_total_min_pressors_MAE
-     ,T_AUT50MAP_total_min ~ T_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-T_AUT50MAP_total_min_pressors_MAE_matrix<-as.matrix(T_AUT50MAP_total_min_pressors_MAE_matrix)
-
-
-
-T_AUT65MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset %>%
-dplyr::group_by(T_AUT65MAP_total_min, T_total_pressors_formula_mg) %>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518)
-T_AUT65MAP_total_min_pressors_MAE<-T_AUT65MAP_total_min_pressors_MAE[complete.cases(T_AUT65MAP_total_min_pressors_MAE), ]
-library(reshape)
-T_AUT65MAP_total_min_pressors_MAE_matrix<-cast(data=T_AUT65MAP_total_min_pressors_MAE
-     ,T_AUT65MAP_total_min ~ T_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-T_AUT65MAP_total_min_pressors_MAE_matrix<-as.matrix(T_AUT65MAP_total_min_pressors_MAE_matrix)
-
-
-
-
-T_AOT65MAP_total_min_pressors_MAE<-(FinalHemodynamicsDataset) %>%
-dplyr::group_by(T_AOT65MAP_total_min, T_total_pressors_formula_mg) %>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518)
-T_AOT65MAP_total_min_pressors_MAE<-T_AOT65MAP_total_min_pressors_MAE[complete.cases(T_AOT65MAP_total_min_pressors_MAE), ]
-
-#Quartiles
-
-Q_AUT50MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset %>%
-dplyr::group_by(Q_AUT50MAP_total_min, Q_total_pressors_formula_mg)%>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
-Q_AUT50MAP_total_min_pressors_MAE<-Q_AUT50MAP_total_min_pressors_MAE[complete.cases(Q_AUT50MAP_total_min_pressors_MAE), ]
-library(reshape)
-Q_AUT50MAP_total_min_pressors_MAE_matrix<-cast(data=Q_AUT50MAP_total_min_pressors_MAE
-     ,Q_AUT50MAP_total_min ~ Q_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-Q_AUT50MAP_total_min_pressors_MAE_matrix<-as.data.frame(Q_AUT50MAP_total_min_pressors_MAE_matrix)
-colnames(Q_AUT50MAP_total_min_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
-rownames(Q_AUT50MAP_total_min_pressors_MAE_matrix)<-c('total AUT50 MAP  Q1','total AUT50 MAP  Q2','total AUT50 MAP  Q3','total AUT50 MAP  Q4')
-Q_AUT50MAP_total_min_pressors_MAE_matrix[,1]<-NULL
-Q_AUT50MAP_total_min_pressors_MAE_matrix<-round(Q_AUT50MAP_total_min_pressors_MAE_matrix,2)
-
-Q_AUT65MAP_total_min_pressors_MAE<-FinalHemodynamicsDataset%>%
-dplyr::group_by(Q_AUT65MAP_total_min, Q_total_pressors_formula_mg) %>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
-Q_AUT65MAP_total_min_pressors_MAE<-Q_AUT65MAP_total_min_pressors_MAE[complete.cases(Q_AUT65MAP_total_min_pressors_MAE), ]
-library(reshape)
-Q_AUT65MAP_total_min_pressors_MAE_matrix<-cast(data=Q_AUT65MAP_total_min_pressors_MAE
-     ,Q_AUT65MAP_total_min ~ Q_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-Q_AUT65MAP_total_min_pressors_MAE_matrix<-as.data.frame(Q_AUT65MAP_total_min_pressors_MAE_matrix)
-colnames(Q_AUT65MAP_total_min_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
-rownames(Q_AUT65MAP_total_min_pressors_MAE_matrix)<-c('total AUT65 MAP  Q1','total AUT65 MAP  Q2','total AUT65 MAP  Q3','total AUT65 MAP  Q4')
-Q_AUT65MAP_total_min_pressors_MAE_matrix[,1]<-NULL
-Q_AUT65MAP_total_min_pressors_MAE_matrix<-round(Q_AUT65MAP_total_min_pressors_MAE_matrix,2)
-
-
-Q_AOT65MAP_total_min_pressors_MAE<-(FinalHemodynamicsDataset) %>%
-dplyr::group_by(Q_AOT65MAP_total_min, Q_total_pressors_formula_mg) %>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
-Q_AOT65MAP_total_min_pressors_MAE<-Q_AOT65MAP_total_min_pressors_MAE[complete.cases(Q_AOT65MAP_total_min_pressors_MAE), ]
-library(reshape)
-Q_AOT65MAP_total_min_pressors_MAE_matrix<-cast(data=Q_AOT65MAP_total_min_pressors_MAE
-     ,Q_AOT65MAP_total_min ~ Q_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-Q_AOT65MAP_total_min_pressors_MAE_matrix<-as.data.frame(Q_AOT65MAP_total_min_pressors_MAE_matrix)
-colnames(Q_AOT65MAP_total_min_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
-rownames(Q_AOT65MAP_total_min_pressors_MAE_matrix)<-c('total AOT65 MAP  Q1','total AOT65 MAP  Q2','total AOT65 MAP  Q3','total AOT65 MAP  Q4')
-Q_AOT65MAP_total_min_pressors_MAE_matrix[,1]<-NULL
-Q_AOT65MAP_total_min_pressors_MAE_matrix<-round(Q_AOT65MAP_total_min_pressors_MAE_matrix,2)
-
-#Quartiles of ratio
-
-Q_AUT50MAP_total_ratio_pressors_MAE<-FinalHemodynamicsDataset %>%
-dplyr::group_by(Q_AUT50MAP_total_ratio, Q_total_pressors_formula_mg)%>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
-Q_AUT50MAP_total_ratio_pressors_MAE<-Q_AUT50MAP_total_ratio_pressors_MAE[complete.cases(Q_AUT50MAP_total_ratio_pressors_MAE), ]
-library(reshape)
-Q_AUT50MAP_total_ratio_pressors_MAE_matrix<-cast(data=Q_AUT50MAP_total_ratio_pressors_MAE
-     ,Q_AUT50MAP_total_ratio ~ Q_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-Q_AUT50MAP_total_ratio_pressors_MAE_matrix<-as.data.frame(Q_AUT50MAP_total_ratio_pressors_MAE_matrix)
-colnames(Q_AUT50MAP_total_ratio_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
-rownames(Q_AUT50MAP_total_ratio_pressors_MAE_matrix)<-c('ratio AUT50 MAP  Q1','ratio AUT50 MAP  Q2','ratio AUT50 MAP  Q3','ratio AUT50 MAP  Q4')
-Q_AUT50MAP_total_ratio_pressors_MAE_matrix[,1]<-NULL
-Q_AUT50MAP_total_ratio_pressors_MAE_matrix<-round(Q_AUT50MAP_total_ratio_pressors_MAE_matrix,2)
-
-
-
-Q_AUT65MAP_total_ratio_pressors_MAE<-FinalHemodynamicsDataset%>%
-dplyr::group_by(Q_AUT65MAP_total_ratio, Q_total_pressors_formula_mg) %>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
-Q_AUT65MAP_total_ratio_pressors_MAE<-Q_AUT65MAP_total_ratio_pressors_MAE[complete.cases(Q_AUT65MAP_total_ratio_pressors_MAE), ]
-library(reshape)
-Q_AUT65MAP_total_ratio_pressors_MAE_matrix<-cast(data=Q_AUT65MAP_total_ratio_pressors_MAE
-     ,Q_AUT65MAP_total_ratio ~ Q_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-Q_AUT65MAP_total_ratio_pressors_MAE_matrix<-as.data.frame(Q_AUT65MAP_total_ratio_pressors_MAE_matrix)
-colnames(Q_AUT65MAP_total_ratio_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
-rownames(Q_AUT65MAP_total_ratio_pressors_MAE_matrix)<-c('ratio AUT65 MAP  Q1','ratio AUT65 MAP  Q2','ratio AUT65 MAP  Q3','ratio AUT65 MAP  Q4')
-Q_AUT65MAP_total_ratio_pressors_MAE_matrix[,1]<-NULL
-Q_AUT65MAP_total_ratio_pressors_MAE_matrix<-round(Q_AUT65MAP_total_ratio_pressors_MAE_matrix,2)
-
-
 # AUC Quartiles 
 
 
-Q_AUC65MAP_total_mmHgmin_pressors_MAE<-FinalHemodynamicsDataset%>%
+Q_AUC65MAP_total_mmHgmin_pressors_RFDS<-FinalHemodynamicsDataset%>%
 dplyr::group_by(Q_AUC65MAP_total_mmHgmin, Q_total_pressors_formula_mg) %>%
-dplyr::summarise('MAE rate (%)'=sum(Any_MAE)/518*100)
-Q_AUC65MAP_total_mmHgmin_pressors_MAE<-Q_AUC65MAP_total_mmHgmin_pressors_MAE[complete.cases(Q_AUC65MAP_total_mmHgmin_pressors_MAE), ]
+dplyr::summarise('RFDS rate (%)'=sum(RFDS)/274*100)
+Q_AUC65MAP_total_mmHgmin_pressors_RFDS<-Q_AUC65MAP_total_mmHgmin_pressors_RFDS[complete.cases(Q_AUC65MAP_total_mmHgmin_pressors_RFDS), ]
+
 library(reshape)
-Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix<-cast(data=Q_AUC65MAP_total_mmHgmin_pressors_MAE
+Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix<-cast(data=Q_AUC65MAP_total_mmHgmin_pressors_RFDS
      ,Q_AUC65MAP_total_mmHgmin ~ Q_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix<-as.data.frame(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix)
-colnames(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
-rownames(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix)<-c('total AUC65 MAP  Q1','total AUC65 MAP  Q2','total AUC65 MAP  Q3','total AUC65 MAP  Q4')
-Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix[,1]<-NULL
-Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix<-round(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix,2)
+     ,value = 'RFDS rate (%)')
+Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix<-as.data.frame(Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix)
+colnames(Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
+rownames(Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix)<-c('total AUC65 MAP  Q1','total AUC65 MAP  Q2','total AUC65 MAP  Q3','total AUC65 MAP  Q4')
+Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix[,1]<-NULL
+Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix<-round(Q_AUC65MAP_total_mmHgmin_pressors_RFDS_matrix,2)
 
-# TWA Quartiles 
-
-
-Q_TWA65MAP_total_mmHg_pressors_MAE<-FinalHemodynamicsDataset%>%
-dplyr::group_by(Q_TWA65MAP_total_mmHg, Q_total_pressors_formula_mg) %>%
-dplyr::summarise(total_patientswith_MAE=sum(Any_MAE)/518*100)
-Q_TWA65MAP_total_mmHg_pressors_MAE<-Q_TWA65MAP_total_mmHg_pressors_MAE[complete.cases(Q_TWA65MAP_total_mmHg_pressors_MAE), ]
-library(reshape)
-Q_TWA65MAP_total_mmHg_pressors_MAE_matrix<-cast(data=Q_TWA65MAP_total_mmHg_pressors_MAE
-     ,Q_TWA65MAP_total_mmHg ~ Q_total_pressors_formula_mg
-     ,value = 'total_patientswith_MAE')
-Q_TWA65MAP_total_mmHg_pressors_MAE_matrix<-as.data.frame(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix)
-colnames(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix)<-c('','total pressors Q1','total pressors Q2','total pressors Q3','total pressors Q4')
-rownames(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix)<-c('total TWA MAP 65 Q1','total TWA MAP 65 Q2','total TWA MAP 65 Q3','total TWA MAP 65 Q4')
-Q_TWA65MAP_total_mmHg_pressors_MAE_matrix[,1]<-NULL
-Q_TWA65MAP_total_mmHg_pressors_MAE_matrix<-round(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix,2)
 
 ```
 
@@ -186,34 +69,15 @@ Q_TWA65MAP_total_mmHg_pressors_MAE_matrix<-round(Q_TWA65MAP_total_mmHg_pressors_
 ## Exporting to excel
 
 ```{r}
-write.xlsx(T_AUT50MAP_total_min_pressors_MAE_matrix, "T_AUT50MAP_total_min_pressors_MAE_matrix.xlsx")
-write.xlsx(T_AUT65MAP_total_min_pressors_MAE_matrix, "T_AUT65MAP_total_min_pressors_MAE_matrix.xlsx")
-
-write.xlsx(Q_AUT50MAP_total_min_pressors_MAE_matrix, "Q_AUT50MAP_total_min_pressors_MAE_matrix.xlsx")
-write.xlsx(Q_AUT65MAP_total_min_pressors_MAE_matrix, "Q_AUT65MAP_total_min_pressors_MAE_matrix.xlsx")
-write.xlsx(Q_AOT65MAP_total_min_pressors_MAE_matrix, "Q_AOT65MAP_total_min_pressors_MAE_matrix.xlsx")
-
-#quartiles ratio
-
-write.xlsx(Q_AUT50MAP_total_ratio_pressors_MAE_matrix, "Q_AUT50MAP_total_ratio_pressors_MAE_matrix.xlsx")
-write.xlsx(Q_AUT65MAP_total_ratio_pressors_MAE_matrix, "Q_AUT65MAP_total_ratio_pressors_MAE_matrix.xlsx")
-
 # AUC
 write.xlsx(Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix,
 'Q_AUC65MAP_total_mmHgmin_pressors_MAE_matrix.xlsx')
-# TWA 
-write.xlsx(Q_TWA65MAP_total_mmHg_pressors_MAE_matrix,
-'Q_TWA65MAP_total_mmHg_pressors_MAE_matrix.xlsx')
 ```
 
 
 # 3D Tertiles in R
 
 ```{r}
-library('plot3D')
-
-
-
 hist3D( main =  paste("T AUT50MAP Plot\n Number of Cases =", sum(T_AUT50MAP_total_min_pressors_MAE_matrix))
    , x = c(1:3)
    , y = c(1:3)
@@ -523,128 +387,512 @@ p2 <- plot_ly(y = FinalHemodynamicsDataset[FinalHemodynamicsDataset$Any_MAE==0,]
 
 # Correlations
 
+Hi! I used "pearson"  since it is the default and I did not changed it since I did not know the distributions yet, now I know it I am going to use "spearman" since 
+1) It is robust to outliers
+2) It can be used with ordinal data as well
+
 ```{r}
+relevant_data_for_corplot<-relevant_data[c('total_pressors_formula_mg', 'AUT65MAP_total_min', 'milrinone', 'Age', 'delta_HCT_pct_median_imp', 'mean_ef_median_imp', 'duration_Surgery_min', 'T_STS_RiskAlgorithm_multiple_imp', 'Cross_Clamp_Time_imp','Category','Gender' )]
+relevant_data_for_corplot$Category <- as.numeric(plyr::revalue(relevant_data_for_corplot$Category , c( "CAB+other"=1, "CAB+valve+other"=2, "Valve+other"=3)) )
+relevant_data_for_corplot$Gender <- as.numeric(plyr::revalue(relevant_data_for_corplot$Gender , c( "Male"=1, "Female"=2)) )
+relevant_data_for_corplot$T_STS_RiskAlgorithm_multiple_imp<-as.numeric(relevant_data_for_corplot$T_STS_RiskAlgorithm_multiple_imp)
 
-sapply(relevant_data_imputed, class)
-
-cor_periods_min<-cor(relevant_data_imputed[,c('Age','duration_Surgery_min','total_pressors_formula_mg','STS_RiskAlgorithm_mean_imp')])
+cor_variables<-cor(relevant_data_for_corplot, method = "spearman" )
 
 #non interactive circle corplot
-cortable<-corrplot(cor_periods_min, method = "circle")
+cortable<-corrplot(cor_variables, method = "number")
 
 write.xlsx(as.data.frame(print(cortable)), "cortable.xlsx")
 
 ```
 
-# Odd Ratio Plots
-
-# General model
-
-```{r}
-#Generate plots
-
-df <- oddsratios_table
-
-labels<-c('Age', 'Category: Aortic Surgery', 'Category: CABG + Valve', 'Category: Other', 'Category: Valve', 'Cross Clamp Time' ,'delta HCT pct', 'Gender: Female', 'Mean EF','AUC MAP 65 mmHg Q2', 'AUC MAP 65 mmHg Q3', 'AUC MAP 65 mmHg Q4', 'total pressors formula mg Q2', 'total pressors formula mg Q3', 'total pressors formula mg Q4', 'STS Risk Algorithm Tertile 2', 'STS Risk Algorithm Tertile 3')
-number_of_exposures<-length(labels)+1
-
-df <- data.frame(yAxis = 2:number_of_exposures,
-                 boxOdds = oddsratios_table$OR[2:number_of_exposures] ,
-                 boxCILow = oddsratios_table$`2.5 %`[2:number_of_exposures],  
-                 boxCIHigh = oddsratios_table$`97.5 %`[2:number_of_exposures]
-)
-#df <- df[order(df$boxOdds),]
-
-p<-ggplot(df, aes(x = boxOdds
-                  , y = labels
-                  )) + 
-  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
-  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
-                 , size = .5
-                 , height = .2
-                 , color = "gray50") +
-  geom_point(size = 2, color = "#2980b9") +
-  #coord_trans(x = scales:::exp_trans(1.01)) +
-  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
-  theme_bw()+
-  theme(panel.grid.minor = element_blank()) +
-  ylab("Exposure") +
-  xlab("Odds ratio") +
-  ggtitle("Impact on Any MAE")
-
-p<-ggplotly(p%>%layout(hovermode = 'compare'))
-
-```
-
-# Exploratory Analysis
-
-```{r}
-#Generate plots
-
-df <- oddsratios_table
-
-
-labels2<-c('Age', 'Category: CABG + Valve', 'Category: Valve', 'delta HCT pct', 'Gender: Female', 'Mean EF','AUC MAP 65 mmHg Q2', 'AUC MAP 65 mmHg Q3', 'AUC MAP 65 mmHg Q4', 'total pressors formula mg Q2', 'total pressors formula mg Q3', 'total pressors formula mg Q4')
-number_of_exposures2<-length(labels2)+1
-
-
-df <- data.frame(yAxis = 2:number_of_exposures2,
-                 boxOdds = oddsratios_table$OR[2:number_of_exposures2] ,
-                 boxCILow = oddsratios_table$`2.5 %`[2:number_of_exposures2],  
-                 boxCIHigh = oddsratios_table$`97.5 %`[2:number_of_exposures2]
-)
-#df <- df[order(df$boxOdds),]
-
-p<-ggplot(df, aes(x = boxOdds
-                  , y = labels2
-                  )) + 
-  geom_vline(aes(xintercept = 1), size = .1, linetype = "dashed") + 
-  geom_errorbarh(aes(xmax = boxCIHigh, xmin = boxCILow)
-                 , size = .5
-                 , height = .2
-                 , color = "gray50") +
-  geom_point(size = 2, color = "#2980b9") +
-  #coord_trans(x = scales:::exp_trans(1.01)) +
-  #scale_y_continuous(breaks = c(-1:1),labels = c(-1:1)) +
-  theme_bw()+
-  theme(panel.grid.minor = element_blank()) +
-  ylab("Exposure") +
-  xlab("Odds ratio") +
-  ggtitle("Impact on Any MAE")
-
-```
 
 # Bubble plot
 
+## Creating proper dataset
 ```{r}
-colnames(Q_TWA65MAP_total_mmHg_pressors_MAE)[3]<-'MAE rate percentage'
+Quartiles_dataframe_for_plot<-sqldf::sqldf(
+  'SELECT
+    Q_total_pressors_formula_mg
+  , Q_AUT65MAP_total_min
+  , COUNT(DISTINCT Case_Name) AS cases_in_group
+  , SUM(RFDS)/COUNT(DISTINCT Case_Name) AS RFDS_percentage
+  FROM
+  FinalHemodynamicsDataset
+  GROUP BY
+  Q_total_pressors_formula_mg,Q_AUT65MAP_total_min
+  '
+)
+```
 
-p <- plot_ly(Q_TWA65MAP_total_mmHg_pressors_MAE
-             , x = ~as.character(Q_TWA65MAP_total_mmHg)
+
+
+```{r}
+p <- plot_ly(Quartiles_dataframe_for_plot
+             , x = ~as.character(Q_AUT65MAP_total_min)
              , y = ~as.character(Q_total_pressors_formula_mg)
-             , text = ~round(`MAE rate percentage`,2)
+             , text = ~round(RFDS_percentage,2)
              , textfont = list( size = 10
                                 #,color = '#000000'
                                 )
              , type = 'scatter'
              , mode = 'markers+text'
-             , color = ~`MAE rate percentage`
-             , size = ~`MAE rate percentage`
+             , color = ~RFDS_percentage
+             , size = ~RFDS_percentage
              , colors = c('#f1a9a087','#bd1200')
              , sizes = c(10, 120)
              , showlegend = F
              , marker = list(
-               #size =~total_patientswith_MAE
                 opacity = 1
           , sizemode = 'diameter')) %>%
   layout(
 #title = 'Any MAE rate (%) for TWA-MAP under 65 mmHgNumber of cases = 518',
-         xaxis = list(showgrid = T, title='vasopressors dose Q'),
-         yaxis = list(showgrid = T, title='TWA-MAP < 65 mmHg Q'))
+         xaxis = list(showgrid = T, title='Vasopressor-Inotrope dose\nQuartile'),
+         yaxis = list(showgrid = T, title='Intraoperative hypotension total duration MAP <65mmHg\nQuartile'))
 
 htmlwidgets::saveWidget(p, "bubbleplot.html")
 
 ```
 
 
+# Plots with CI
+
+```{r}
+trace1 <- list(
+  uid = "f04e3027-450f-457f-87ae-4b5f16d781ed", 
+  mode = "lines+markers+text", 
+  type = "scatter", 
+  x = c("01<br>AUROC<br>STS","02<br>AUROC<br>RF"), 
+  y = c( best_models_insights[2,]$AUROC
+        ,best_models_insights[1,]$AUROC)
+  ,marker = list(
+    size = 12, 
+    color = c("#c0392b","#27ae60")
+  ),
+  line = list(
+    color = '#74b9ff'
+    ),
+  error_y = list(
+    type = "data",
+    color = c("#bdc3c7"), 
+    symmetric = FALSE,
+    visible = TRUE, 
+    array = c( best_models_insights[2,]$`AUROC_uci` - best_models_insights[2,]$AUROC
+              ,best_models_insights[1,]$`AUROC_uci` - best_models_insights[1,]$AUROC),
+    
+    arrayminus = c( best_models_insights[2,]$AUROC - best_models_insights[2,]$`AUROC_lci`
+                   ,best_models_insights[1,]$AUROC - best_models_insights[1,]$`AUROC_lci`)
+  ), 
+  text = c("Esto es el texto")
+)
+trace2 <- list(
+  uid = "f04e3027-450f-457f-87ae-4b5f16d781ed", 
+  mode = "lines+markers+text", 
+  type = "scatter", 
+  x = c("03<br>AP<br>STS","04<br>AP<br>RF"), 
+  y = c( best_models_insights[2,]$AP
+        ,best_models_insights[1,]$AP)
+  ,marker = list(
+    size = 12, 
+    color = c("#c0392b","#27ae60")
+  ),
+  line = list(
+    color = '#74b9ff'
+    ), 
+  error_y = list(
+    type = "data", 
+    color = c("#bdc3c7"), 
+    symmetric = FALSE,
+    visible = TRUE, 
+    array = c( best_models_insights[2,]$`AP_uci` - best_models_insights[2,]$AP
+              ,best_models_insights[1,]$`AP_uci` - best_models_insights[1,]$AP),
+    
+    arrayminus = c( best_models_insights[2,]$AP - best_models_insights[2,]$`AP_lci`
+                   ,best_models_insights[1,]$AP - best_models_insights[1,]$`AP_lci`)
+  ), 
+  text = c("Esto es el texto")
+)
+trace4 <- list(
+  uid = "f04e3027-450f-457f-87ae-4b5f16d781ed", 
+  mode = "lines+markers+text", 
+  type = "scatter", 
+  x = c("05<br>Specificity<br>STS","06<br>Specificity<br>RF"), 
+  y = c(best_models_insights[2,]$Specificity
+       ,best_models_insights[1,]$Specificity  )
+  ,marker = list(
+    size = 12, 
+    color = c("#c0392b","#27ae60")
+  ),
+  line = list(
+    color = '#74b9ff'
+    ), 
+  error_y = list(
+    type = "data", 
+    color = c("#bdc3c7"), 
+    symmetric = FALSE,
+    visible = TRUE, 
+    array = c( best_models_insights[2,]$`Specificity_uci` - best_models_insights[2,]$Specificity
+              ,best_models_insights[1,]$`Specificity_uci` - best_models_insights[1,]$Specificity),
+    
+    arrayminus = c( best_models_insights[2,]$Specificity - best_models_insights[2,]$`Specificity_lci`
+                   ,best_models_insights[1,]$Specificity - best_models_insights[1,]$`Specificity_lci`)
+  ), 
+  text = c("Esto es el texto")
+)
+trace5 <- list(
+  uid = "f04e3027-450f-457f-87ae-4b5f16d781ed", 
+  mode = "lines+markers+text", 
+  type = "scatter", 
+  x = c("07<br>Sensitivity<br>STS","08<br>Sensitivity<br>RF"), 
+  y = c(best_models_insights[2,]$Sensitivity
+       ,best_models_insights[1,]$Sensitivity  )
+  ,marker = list(
+    size = 12, 
+    color = c("#c0392b","#27ae60")
+  ),
+  line = list(
+    color = '#74b9ff'
+    ), 
+  error_y = list(
+    type = "data", 
+    color = c("#bdc3c7"), 
+    symmetric = FALSE,
+    visible = TRUE, 
+    array = c( best_models_insights[2,]$`Sensitivity_uci` - best_models_insights[2,]$Sensitivity
+              ,best_models_insights[1,]$`Sensitivity_uci` - best_models_insights[1,]$Sensitivity),
+    
+    arrayminus = c( best_models_insights[2,]$Sensitivity - best_models_insights[2,]$`Sensitivity_lci`
+                   ,best_models_insights[1,]$Sensitivity - best_models_insights[1,]$`Sensitivity_lci`)
+  ), 
+  text = c("Esto es el texto")
+)
+
+
+data <- list(trace1,trace2,trace4,trace5)
+#layout <- list(title = "Performance Insights with 95% confidence interval")
+p <- plot_ly()
+p <- add_trace(p, uid=trace1$uid, mode=trace1$mode, type=trace1$type, x=trace1$x, y=trace1$y, marker=trace1$marker, line=trace1$line, error_y=trace1$error_y, text=paste(trace1$y,' CI [',trace1$y-trace1$error_y$arrayminus,',',trace1$y+trace1$error_y$array,']',sep = '') ,textposition = 'right')
+p <- add_trace(p, uid=trace2$uid, mode=trace2$mode, type=trace2$type, x=trace2$x, y=trace2$y, marker=trace2$marker, line=trace2$line, error_y=trace2$error_y, text=paste(trace2$y,' CI [',trace2$y-trace2$error_y$arrayminus,',',trace2$y+trace2$error_y$array,']',sep = '') ,textposition = 'right')
+p <- add_trace(p, uid=trace4$uid, mode=trace4$mode, type=trace4$type, x=trace4$x, y=trace4$y, marker=trace4$marker, line=trace4$line, error_y=trace4$error_y, text=paste(trace4$y,' CI [',trace4$y-trace4$error_y$arrayminus,',',trace4$y+trace4$error_y$array,']',sep = '') ,textposition = 'right')
+p <- add_trace(p, uid=trace5$uid, mode=trace5$mode, type=trace5$type, x=trace5$x, y=trace5$y, marker=trace5$marker, line=trace5$line, error_y=trace5$error_y, text=paste(trace5$y,' CI [',trace5$y-trace5$error_y$arrayminus,',',trace5$y+trace5$error_y$array,']',sep = '') ,textposition = 'left')
+p <- layout(p 
+            #,title=layout$title
+            ,showlegend=T
+            ,yaxis = list(range = c(0, 1))
+            )
+```
+
+# OR ggplot
+
+```{r}
+set.seed(0815)
+df <- data.frame(x =1:10,
+                 F =runif(10,1,2),
+                 L =runif(10,0,1),
+                 U =runif(10,2,3))
+
+require(ggplot2)
+ggplot(df, aes(x = x, y = F)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymax = U, ymin = L))
+```
+
+# Supplemental Figure 1 A
+
+Primary analysis 1 trajectory
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_total_tenmins
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_tenmins
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+predicted_data<-as.data.frame(ggeffect(mod_multiv,terms="AUT65MAP_total_tenmins"))
+predicted_data[,c("predicted","std.error","conf.low","conf.high" )]<-predicted_data[,c("predicted","std.error","conf.low","conf.high" )]*100
+
+ggplot(data=predicted_data, aes(x=x, y=predicted))+
+    geom_line()+
+    geom_ribbon(data=predicted_data,aes(x=x,ymin=conf.low,ymax=conf.high),alpha=0.3,inherit.aes=FALSE)+
+    xlab('IOH total duration MAP < 65 mmHg (minutes)')+
+    ylab('Predicted RFDS (%)')+
+    #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+    #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+    theme_minimal()  
+```
+# Supplemental Figure 1 B
+
+Based on the visual inspection top 5% of patients with intraoperative hypotension are less linear
+We present intraoperative hypotension duration without the top 5% of patients with intraoperative hypotension duration in ten minutes.
+
+Primary analysis 1 trajectory
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+
+cuttoff<-quantile(relevant_data$AUT65MAP_total_tenmins, 0.95)
+
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_total_tenmins
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_tenmins
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data %>% filter(AUT65MAP_total_tenmins<cuttoff)
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+predicted_data<-as.data.frame(ggeffect(mod_multiv,terms="AUT65MAP_total_tenmins"))
+predicted_data[,c("predicted","std.error","conf.low","conf.high" )]<-predicted_data[,c("predicted","std.error","conf.low","conf.high" )]*100
+
+ggplot(data=predicted_data, aes(x=x, y=predicted))+
+    geom_line()+
+    geom_ribbon(data=predicted_data,aes(x=x,ymin=conf.low,ymax=conf.high),alpha=0.3,inherit.aes=FALSE)+
+    xlab('IOH total duration MAP < 65 mmHg (minutes)\n Excluding top 5% of IOH Values')+
+    ylab('Predicted RFDS (%)')+
+    #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+    #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+    theme_minimal()  
+```
+# Supplemental Figure 3
+
+Society of Thoracic Surgeons risk score and final cohort
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                  STS_RiskAlgorithm_median_imp
+                 , data = relevant_data 
+            , family=binomial(link="logit"))
+
+
+predicted_data<-as.data.frame(ggeffect(mod_multiv,terms="STS_RiskAlgorithm_median_imp"))
+predicted_data[,c("predicted","std.error","conf.low","conf.high" )]<-predicted_data[,c("predicted","std.error","conf.low","conf.high" )]*100
+
+ggplot(data=predicted_data, aes(x=x, y=predicted))+
+    geom_line()+
+    geom_ribbon(data=predicted_data,aes(x=x,ymin=conf.low,ymax=conf.high),alpha=0.3,inherit.aes=FALSE)+
+    xlab('STS risk score')+
+    ylab('Predicted RFDS (%)')+
+    #scale_color_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+    #scale_fill_manual(labels = c("Black", "White"), values = c("#1abc9c","#f1c40f"))+
+    theme_minimal()  
+
+```
+
+
+# FIgure 3
+
+# TEST 2 IOH Cat as main exposure
+
+# Full Cohort
+
+## Full Surgery Duration
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+#below_ninetyfith
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_total_min
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + STS_RiskAlgorithm_median_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+
+ggeffect(mod_multiv,terms="STS_RiskAlgorithm_median_imp") %>% plot()
+
+
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+
+write.xlsx(as.data.frame(print(oddsratios_table)), "../Tables and Figures/oddsratios_table_exploratory4.xlsx")
+
+```
+
+
+
+
+
+
+
+
+### Exploratory analyses
+
+
+
+
+
+####  Exploratory analysis 1
+
+Outcome: Stroke
+Exposure: main exposure IOH_cat
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +IOH_cat
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data_for_figure_3
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+
+oddsratios_table
+
+
+```
+
+####  Exploratory analysis 2
+
+Outcome: Renal Failure
+Exposure: main exposure IOH_cat
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +IOH_cat
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data_for_figure_3
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+
+
+```
+
+####  Exploratory analysis 3
+
+Outcome: Death
+Exposure: main exposure IOH_cat
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +IOH_cat
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data_for_figure_3
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+
+
+```
 
