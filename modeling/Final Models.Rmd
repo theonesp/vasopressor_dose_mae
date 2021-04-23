@@ -1,42 +1,69 @@
 ---
-title: "Models creation"
-author: "Miguel Ángel Armengol de la Hoz"
+title: "Final Models"
+author: Miguel Ángel Armengol de la Hoz
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
-  html_document:
-    toc: true
-    theme: united
+  html_notebook:
+    code_folding: hide
+    number_sections: yes
+    theme: flatly
+    toc: yes
+    toc_float: no
+
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = paste0(substr(inputFile,1,nchar(inputFile)-4)," ",Sys.Date(),'.html')) })
 ---
 
-# Libraries
+# Environment
 
-```{r}
+```{r warning=FALSE}
 library(readr)
 library(dplyr)
 library(Amelia)
 library(ggplot2)
-library(xlsx)
 library(Hmisc)
 library(ResourceSelection)
-library(rms)
-#sudo ln -f -s $(/usr/libexec/java_home)/jre/lib/server/libjvm.dylib /usr/local/lib
-library(rJava)
 library(Deducer)
 require(MASS)
+library(lme4)
+library(lmtest)
+library(ggeffects)
+library(xlsx)
+library(car)
+library(kableExtra)
+library(modEvA)
+# mean center and Standardization
+meancstand <- function(x){
+result<-as.numeric(scale(x,center=T, scale=T))
+return(result)
+}
 ```
 
 # Creating dataset to fit logistc regression model
 
 ```{r}
 #detach('pachage::dplyr')
+FinalHemodynamicsDataset<-FinalHemodynamicsDataset%>%mutate(
+AUT65MAP_outsideCPB_min=AUT65MAP_preCPB_min+AUT65MAP_postCPB_min,
+AUT65MAP_outsideCPB_tenmins=AUT65MAP_preCPB_tenmins+AUT65MAP_postCPB_tenmins
+)
+
+
 
 relevant_data<-FinalHemodynamicsDataset%>%
 dplyr::select( Case_Name
-               ,Any_MAE
+              ,Renal_Failure
+              ,Any_MAE
+              ,RFDS
+              ,Stroke
+              ,Death
               ,Gender
               ,Age
               ,Category
               ,duration_Surgery_min
+              ,T_STS_RiskAlgorithm_multiple_imp
               ,T_STS_RiskAlgorithm_median_imp
+              ,T_STS_RiskAlgorithm_multiple_imp
+              ,STS_RiskAlgorithm_median_imp
               ,total_pressors_formula_mg
               ,AUT50MAP_total_min
               ,Q_AUT50MAP_total_min
@@ -44,7 +71,6 @@ dplyr::select( Case_Name
               ,Q_AUT65MAP_total_min
               ,Q_AOT65MAP_total_min
               ,AUT65MAP_total_min
-              ,AOT65MAP_total_min
               ,delta_HCT_pct_median_imp
               ,mean_ef_median_imp
               ,AUC65MAP_total_mmHgmin
@@ -54,9 +80,65 @@ dplyr::select( Case_Name
               ,Q_AOC65MAP_total_mmHgmin
               ,Cross_Clamp_Time_imp
               ,duration_CPB_min
-              ,AUC65MAP_CPB_total_mmHgmin
+              ,duration_outsideCPB_min
+              ,AUC65MAP_CPB_mmHgmin
+              ,Q_TWA65MAP_outsideCPB_mmHg
+              ,Q_AUC65MAP_outsideCPB_mmHgmin
+              ,Q_TWA65MAP_CPB_mmHg
+              ,Q_AUC65MAP_CPB_mmHgmin
+              ,Anesthesiologist
+              ,IOH_cat
+              ,Q_AUT65MAP_CPB_IOH_ratio
+              ,Q_AUT65MAP_total_min
+              ,AUT65MAP_outsideCPB_min
+              ,AUT65MAP_preCPB_min
+              ,AUT65MAP_CPB_min
+              ,milrinone
+              ,Diabetes                        
+              ,Hypertension_final             
+              ,Congestive_Heart_Failure       
+              ,Previous_myocardial_infarction 
+              ,ChronicLungDisease             
+              ,Dialysis                       
+              ,PreOpMedBetaBlockers           
+              ,PreOpMedInotropes              
+              ,PreOpMedSteroids               
+              ,PreOpMedAspirin                
+              ,PreOpMedLipidLowering          
+              ,delta_HCT_pct_median_imp  
+              ,mean_ef_median_imp    
+              ,duration_CPB_min         
+              ,AUT65MAP_total_min
+              ,total_pressors_formula_mg
+# tenmins              
+              ,AUT65MAP_total_tenmins
+              ,AUT65MAP_preCPB_tenmins
+              ,AUT65MAP_CPB_tenmins
+              ,AUT65MAP_postCPB_tenmins
+              ,AUC65MAP_total_mmHgtenmins
+              ,AOC65MAP_total_mmHgtenmins
+              ,AUC65MAP_CPB_mmHgtenmins
+              ,AUC65MAP_outsideCPB_mmHgtenmins
+              ,AUT65MAP_outsideCPB_tenmins
+              ,AUC65MAP_preCPB_mmHgtenmins
+              ,AUC65MAP_postCPB_mmHgtenmins              
               )
+
+# Creating variables in 10 min intervals
+relevant_data$duration_Surgery_tenmins<-relevant_data$duration_Surgery_min/10
+relevant_data$duration_CPB_tenmins<-relevant_data$duration_CPB_min/10
+relevant_data$duration_outsideCPB_tenmins<-relevant_data$duration_outsideCPB_min/10
+
+# mean centering and standardizing AUC
+relevant_data$AUC65MAP_total_mmHgtenmins_std<-meancstand(relevant_data$AUC65MAP_total_mmHgtenmins)
 ```
+
+## Export dataset analyzed
+
+```{r}
+write.csv(relevant_data,'relevant_data.csv',row.names = F)
+```
+
 
 # Factorizing Variables
 
@@ -64,7 +146,19 @@ dplyr::select( Case_Name
 # Other variables to be factorized
 relevant_data$Gender<-as.factor(relevant_data$Gender)
 relevant_data$Category<-as.factor(relevant_data$Category)
+relevant_data$Anesthesiologist<-as.factor(relevant_data$Anesthesiologist)
+
+# Outcomes
 relevant_data$Any_MAE<-as.factor(relevant_data$Any_MAE)
+relevant_data$Renal_Failure<-as.factor(relevant_data$Renal_Failure)
+relevant_data$Stroke<-as.factor(relevant_data$Stroke)
+relevant_data$Death<-as.factor(relevant_data$Death)
+relevant_data$RFDS<-as.factor(relevant_data$RFDS)
+
+relevant_data$IOH_cat<-as.factor(relevant_data$IOH_cat)
+
+relevant_data$Q_AUT65MAP_CPB_IOH_ratio<-as.factor(relevant_data$Q_AUT65MAP_CPB_IOH_ratio)
+
 
 # Factorizing Quarrtiles
 relevant_data$Q_AUT50MAP_total_min<-as.factor(relevant_data$Q_AUT50MAP_total_min)
@@ -75,9 +169,16 @@ relevant_data$Q_total_pressors_formula_mg<-as.factor(relevant_data$Q_total_press
 relevant_data$Q_AUC65MAP_total_mmHgmin<-as.factor(relevant_data$Q_AUC65MAP_total_mmHgmin)
 relevant_data$Q_AOC65MAP_total_mmHgmin<-as.factor(relevant_data$Q_AOC65MAP_total_mmHgmin)
 relevant_data$Q_TWA65MAP_total_mmHg<-as.factor(relevant_data$Q_TWA65MAP_total_mmHg)
+relevant_data$Q_TWA65MAP_outsideCPB_mmHg<-as.factor(relevant_data$Q_TWA65MAP_outsideCPB_mmHg)
+relevant_data$Q_AUC65MAP_outsideCPB_mmHgmin<-as.factor(relevant_data$Q_AUC65MAP_outsideCPB_mmHgmin)
+relevant_data$Q_TWA65MAP_CPB_mmHg<-as.factor(relevant_data$Q_TWA65MAP_CPB_mmHg)
+relevant_data$Q_AUC65MAP_CPB_mmHgmin<-as.factor(relevant_data$Q_AUC65MAP_CPB_mmHgmin)
+
+relevant_data$Q_AUT65MAP_total_min<-as.factor(relevant_data$Q_AUT65MAP_total_min)
 
 # Factorizing Tertiles
 relevant_data$T_STS_RiskAlgorithm_median_imp<-as.factor(relevant_data$T_STS_RiskAlgorithm_median_imp)
+relevant_data$T_STS_RiskAlgorithm_multiple_imp<-as.factor(relevant_data$T_STS_RiskAlgorithm_multiple_imp)
 
 #relevant_data$Q_AUT80SBP_total_min<-as.factor(relevant_data$Q_AUT80SBP_total_min)
 
@@ -91,38 +192,1023 @@ relevant_data$T_STS_RiskAlgorithm_median_imp<-as.factor(relevant_data$T_STS_Risk
 
 # creating T_STS_RiskAlgorithm_median_imp variable
 
+# Selecting reference levels for the categorical variables
+relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
+relevant_data$Category <- relevel(relevant_data$Category, ref = "CAB+other")
+
 
 ```
 
+# TEST 1 Full Cohort
+
+## Full Surgery Duration
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.  
+Exposure: Duration of total hypotension.
+
+```{r}
+relevant_data$old_pressors<-relevant_data$total_pressors_formula_mg+relevant_data$milrinone
+
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_total_tenmins
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_tenmins
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+print('VIF Analysis')
+vif(mod_multiv)
+
+ggeffect(mod_multiv,terms="AUT65MAP_total_tenmins") %>% plot()
 
 
-# Multivariate log regression Tertiles of Pressors and MAP adjusted with offset and OR
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+
+oddsratios_table %>%
+  kbl(caption = "Odds Ratio" , align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
+```
+
+##### AU the ROC and precision-recall curve
+
+```{r fig.height=4.5, fig.width=9}
+par(mfrow = c(1, 2))
+AUC(mod_multiv, main = "ROC curve")
+AUC(mod_multiv, curve = "PR", main = "Precision-recall curve")
+```
+
+
+### Exploratory analyses
+
+####  Exploratory analysis 1
+
+Outcome: Renal_Failure  
+Exposure: main exposure AUT65MAP_total_min
 
 ```{r}
 # Selecting reference levels for the categorical variables
-relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
-relevant_data$Category <- relevel(relevant_data$Category, ref = "CABG")
 
-mod_multiv<-glm(Any_MAE ~ 
-                 +Q_total_pressors_formula_mg
-                 +Q_AUC65MAP_total_mmHgmin
-                 +T_STS_RiskAlgorithm_median_imp
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_total_min
+                 +T_STS_RiskAlgorithm_multiple_imp
                  +Gender
                  +Age
                  +Category
                  +delta_HCT_pct_median_imp
                  +mean_ef_median_imp
-                 #uncomment only for studying interaction (don't factorize variable Q when studying interaction)
-                 +Q_AOC65MAP_total_mmHgmin*Q_total_pressors_formula_mg
-                 #+offset(log(duration_Surgery_min))
+                 +duration_Surgery_min
                  +Cross_Clamp_Time_imp
-                 #+as.factor(as.numeric(cut2(Cross_Clamp_Time, g=4)))
-                 #+duration_CPB_min
                  ,family='binomial'
                  ,data = relevant_data
                 )
 
-mod_multiv
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+
+```
+
+####  Exploratory analysis 2
+
+Outcome: Death.  
+Exposure: main exposure AUT65MAP_total_min.  
+
+```{r}
+# Selecting reference levels for the categorical variables
+relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
+
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_total_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+####  Exploratory analysis 3
+
+Outcome: Stroke.  
+Exposure: main exposure AUT65MAP_total_min.  
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_total_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+
+oddsratios_table
+```
+
+## CPB
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_CPB_tenmins
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_tenmins
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+
+oddsratios_table %>%
+  kbl(caption = "Odds Ratio" , align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
+```
+
+### Exploratory analyses
+
+####  Exploratory analysis 1
+
+Outcome: Renal Failure.  
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_CPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+####  Exploratory analysis 2
+
+Outcome: Death.  
+Exposure: main exposure AUT65MAP_total_min.  
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_CPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+
+```
+
+####  Exploratory analysis 3
+
+Outcome: Stroke.  
+Exposure: main exposure AUT65MAP_total_min.  
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_CPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+## outsideCPB
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_outsideCPB_tenmins
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_tenmins
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table %>%
+  kbl(caption = "Odds Ratio" , align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
+```
+
+### Exploratory analyses
+
+####  Exploratory analysis 1
+
+Outcome: Stroke
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_outsideCPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+####  Exploratory analysis 2
+
+Outcome: Renal Failure
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
+
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_outsideCPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+
+```
+
+####  Exploratory analysis 3
+
+Outcome: Death
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_outsideCPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+# Sensitivity analysis
+
+Creating sensitivity dataset.
+We are only including cases with *AUT65MAP_total_min < 0.95 Quantile*.
+
+```{r}
+below_ninetyfith<-relevant_data[relevant_data$AUT65MAP_total_min < quantile(relevant_data$AUT65MAP_total_min, 0.95), ]
+```
+
+## Full Surgery Duration adressed
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_total_min
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = below_ninetyfith
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+ggeffect(mod_multiv,terms="AUT65MAP_total_min") %>% plot()
+
+
+
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+
+oddsratios_table
+```
+
+### Exploratory analyses
+
+####  Exploratory analysis 1
+
+Outcome: Renal Failure.  
+Exposure: main exposure AUT65MAP_total_min.  
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_total_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+####  Exploratory analysis 2
+
+Outcome: Death.  
+Exposure: main exposure AUT65MAP_total_min.  
+
+```{r}
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_total_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+
+oddsratios_table
+```
+
+####  Exploratory analysis 3
+
+Outcome: Stroke.  
+Exposure: main exposure AUT65MAP_total_min.  
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_total_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+
+oddsratios_table
+
+```
+
+## CPB
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_CPB_min
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = below_ninetyfith
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+
+oddsratios_table
+```
+
+### Exploratory analyses
+
+####  Exploratory analysis 1
+
+Outcome: Stroke
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_CPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+
+oddsratios_table
+```
+
+####  Exploratory analysis 2
+
+Outcome: Renal Failure
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_CPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+```
+
+####  Exploratory analysis 3
+
+Outcome: Death
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_CPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+```
+## outsideCPB
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_outsideCPB_min
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = below_ninetyfith
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+ggeffect(mod_multiv,terms="AUT65MAP_outsideCPB_min") %>% plot()
+
+
+
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+```
+
+### Exploratory analyses
+
+####  Exploratory analysis 1
+
+Outcome: Stroke
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_outsideCPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+```
+
+####  Exploratory analysis 2
+
+Outcome: Renal Failure
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+sen_analysis_data$Gender <- relevel(sen_analysis_data$Gender, ref = "Male")
+
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_outsideCPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+
+oddsratios_table
+```
+
+####  Exploratory analysis 3
+
+Outcome: Death
+Exposure: main exposure AUT65MAP_total_min
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUT65MAP_outsideCPB_min
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = below_ninetyfith
+                )
+
+summary(mod_multiv)
 
 oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
 options(scipen=999)
@@ -137,115 +1223,536 @@ boxLabels<-rownames(oddsratios_table)
 #oddsratios_table['yAxis']<- length(boxLabels):1
 
 
-write.xlsx(as.data.frame(print(oddsratios_table)), "/Users/marmengol/MEGA/Boston/BIDMC-Harvard/Phenotyping/Tables and Figures/oddsratios_table.xlsx")
-
+oddsratios_table
 ```
 
-## Evaluating the model
+# TEST 2 IOH Cat as main exposure
 
-### AUC
+# Full Cohort
+
+## Full Surgery Duration
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
 
 ```{r}
-ROC<-rocplot(mod_multiv)
-cat('AUC: ')
-ROC$plot_env$auc
+relevant_data$IOH_cat <- relevel(relevant_data$IOH_cat, ref = "1")
+
+
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + IOH_cat
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"Predicted RFDS"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+
 ```
 
-### Hosmer-Lemeshow goodness of fit test
-
-If the p-value is too small, we don’t have to include it, given the conservative property of the test. If it’s larger than 0.05, we include it in the manuscript to make it more complete.
-
-```{r}
-hoslem.test(mod_multiv$y, fitted(mod_multiv),g=10)
-```
 
 
-# Exploratory analysis
 
-## New model for STS risk ratio tertile 3
+
+
+
+
+### Exploratory analyses
+
+
+
+
+
+####  Exploratory analysis 1
+
+Outcome: Stroke
+Exposure: main exposure IOH_cat
 
 ```{r}
 # Selecting reference levels for the categorical variables
-relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
-relevant_data$Category <- relevel(relevant_data$Category, ref = "CABG")
 
-relevant_data_STSrisk3<-subset(relevant_data, T_STS_RiskAlgorithm_median_imp==3)
-  
-
-mod_multiv<-glm(Any_MAE ~ 
-                 +Q_total_pressors_formula_mg
-                 +Q_AUC65MAP_total_mmHgmin
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +IOH_cat
+                 +T_STS_RiskAlgorithm_multiple_imp
                  +Gender
                  +Age
                  +Category
                  +delta_HCT_pct_median_imp
                  +mean_ef_median_imp
-                 #uncomment only for studying interaction (don't factorize variable Q when studying interaction)
-                 #+Q_AOC65MAP_total_mmHgmin*Q_total_pressors_formula_mg
-                 #+offset(log(duration_Surgery_min))
+                 +duration_Surgery_min
                  +Cross_Clamp_Time_imp
-                 #+as.factor(as.numeric(cut2(Cross_Clamp_Time, g=4)))
-                 #+duration_CPB_min
                  ,family='binomial'
-                 ,data = relevant_data_STSrisk3
+                 ,data = relevant_data
                 )
 
-oddsratios_STST3_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
 options(scipen=999)
-oddsratios_STST3_table<-round(oddsratios_STST3_table,4)
-#oddsratios_STST3_table['x']<-(1:10)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
 
-oddsratios_STST3_table<-as.data.frame(oddsratios_STST3_table)
-colnames(oddsratios_STST3_table)[1]<-"OR"
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
 
-oddsratios_STST3_table<-oddsratios_STST3_table[order(row.names(oddsratios_STST3_table)), ]
-boxLabels<-rownames(oddsratios_STST3_table)
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
 
-write.xlsx(as.data.frame(print(oddsratios_STST3_table)), "/Users/marmengol/MEGA/Boston/BIDMC-Harvard/Phenotyping/Tables and Figures/oddsratios_STST3_table.xlsx")
+oddsratios_table
+
+```
+
+####  Exploratory analysis 2
+
+Outcome: Renal Failure
+Exposure: main exposure IOH_cat
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +IOH_cat
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
+
+```
+
+####  Exploratory analysis 3
+
+Outcome: Death
+Exposure: main exposure IOH_cat
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +IOH_cat
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+oddsratios_table
 
 ```
 
 
+# TEST 3 Full Cohort 
 
-# Studying the DataSet
+## Full AUC
 
-```{r eval=FALSE, include=FALSE}
-library(summarytools)
-view(dfSummary(relevant_data))
+###  Primary analyses
 
-test<-FinalHemodynamicsDataset %>%
-  filter(AUT65MAP_total_ratio==0 & Any_MAE==1)
-library(dplyr)
-check<-inner_join(FinalHemodynamicsDataset,listofKeys)%>%
-  filter(duration_Surgery_min>60) %>%
-  dplyr::select(Case_Name,DOS,MRN,Sur_Begin_Time,Sur_End_Time,CPB_Begin_Time, CPB_End_Time, duration_preCPB_min, duration_CPB_min, duration_Surgery_min)
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUC65MAP_total_mmHgtenmins_std
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+#ggeffect(mod_multiv,terms="AUC65MAP_total_mmHgmin") %>% plot()
 
 
 
-write.csv(check[1:10,],'highsurgerylength2.csv')
 
-key1<-as.vector(unlist(unname(sapply(TextList, `[[`, 1)))) 
-key2<-as.vector(unlist(unname(sapply(TextList, `[[`, 2)))) 
-key3<-as.vector(unlist(unname(sapply(TextList, `[[`, 5))))  
-key3<-as.numeric(test3)
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
 
-listofKeys<-cbind.data.frame(key1,key2,key3)
-listofKeys<-listofKeys[complete.cases(listofKeys),]
-names(listofKeys)<-c('Case_Name','DOS','MRN')
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
 
-df<-as.data.frame(key3,key1)
-df['test']<-NA
-df<-rename(df, eee = key3)
-colnames(df)["key3"] ='eee'
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
 
-  
-colnames(df)["key3"]<-'eee'
 
-names(df)['key3']
+oddsratios_table %>%
+  kbl(caption = "Odds Ratio" , align = "c") %>%
+  kable_classic_2(full_width = F, html_font = "Cambria")
 
-colnames(df)["name"]
-colnames(df)['name']
 ```
+
+### Exploratory analyses
+
+####  Exploratory analysis 1
+
+Outcome: Stroke
+Exposure: main exposure AUC65MAP_total_mmHgmin
+
+```{r}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Renal_Failure ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUC65MAP_total_mmHgmin
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+####  Exploratory analysis 2
+
+Outcome: Renal Failure
+Exposure: main exposure AUC65MAP_total_mmHgmin
+
+```{r}
+# Selecting reference levels for the categorical variables
+relevant_data$Gender <- relevel(relevant_data$Gender, ref = "Male")
+
+mod_multiv<-glm(Death ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUC65MAP_total_mmHgmin
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+####  Exploratory analysis 3
+
+Outcome: Death
+Exposure: main exposure AUC65MAP_total_mmHgmin
+
+```{r warning=FALSE}
+# Selecting reference levels for the categorical variables
+
+mod_multiv<-glm(Stroke ~ 
+                 +total_pressors_formula_mg
+                 +milrinone
+                 +AUC65MAP_total_mmHgmin
+                 +T_STS_RiskAlgorithm_multiple_imp
+                 +Gender
+                 +Age
+                 +Category
+                 +delta_HCT_pct_median_imp
+                 +mean_ef_median_imp
+                 +duration_Surgery_min
+                 +Cross_Clamp_Time_imp
+                 ,family='binomial'
+                 ,data = relevant_data
+                )
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+
+```
+
+# TEST 4 Full Cohort STS Continous
+
+## Full AUT
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_total_min
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + T_STS_RiskAlgorithm_multiple_imp
+                 + Cross_Clamp_Time_imp
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+#ggeffect(mod_multiv,terms="AUT65MAP_total_min") %>% plot()
+
+
+
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+# TEST 5 Full Cohort instead of STS we use comorbid variables
+
+## Full AUT
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUT65MAP_total_min
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + Diabetes                        
+                 + Hypertension_final             
+                 + Congestive_Heart_Failure       
+                 + Previous_myocardial_infarction 
+                 + ChronicLungDisease             
+                 + Dialysis                       
+                 + PreOpMedBetaBlockers           
+                 + PreOpMedInotropes              
+                 + PreOpMedSteroids               
+                 + PreOpMedAspirin                
+                 + PreOpMedLipidLowering          
+                 + duration_CPB_min         
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+#ggeffect(mod_multiv,terms="AUT65MAP_total_min") %>% plot()
+
+
+
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+```
+
+
+
+
+# TEST 6 Full Cohort instead of STS we use comorbid variables
+
+## Full AUC
+
+###  Primary analyses
+
+#### Primary analysis 1
+
+Outcome: composite variable of death, stroke, renal failure.
+Exposure: Duration of total hypotension.
+
+```{r}
+mod_multiv<-glm(RFDS ~ 
+                   total_pressors_formula_mg
+                 + AUC65MAP_total_mmHgmin
+                 + milrinone
+                 + Gender
+                 + Age
+                 + Category
+                 + delta_HCT_pct_median_imp
+                 + mean_ef_median_imp
+                 + duration_Surgery_min
+                 + Diabetes                        
+                 + Hypertension_final             
+                 + Congestive_Heart_Failure       
+                 + Previous_myocardial_infarction 
+                 + ChronicLungDisease             
+                 + Dialysis                       
+                 + PreOpMedBetaBlockers           
+                 + PreOpMedInotropes              
+                 + PreOpMedSteroids               
+                 + PreOpMedAspirin                
+                 + PreOpMedLipidLowering          
+                 + duration_CPB_min         
+                 , data = relevant_data
+            , family=binomial(link="logit"))
+
+summary(mod_multiv)
+
+oddsratios_table<-exp(cbind(coef(mod_multiv), confint(mod_multiv)))  
+options(scipen=999)
+oddsratios_table<-round(oddsratios_table,4)
+#oddsratios_table['x']<-(1:10)
+
+oddsratios_table<-as.data.frame(oddsratios_table)
+colnames(oddsratios_table)[1]<-"OR"
+
+oddsratios_table<-oddsratios_table[order(row.names(oddsratios_table)), ]
+boxLabels<-rownames(oddsratios_table)
+#oddsratios_table['yAxis']<- length(boxLabels):1
+oddsratios_table
+
+```
+
 
 
 
