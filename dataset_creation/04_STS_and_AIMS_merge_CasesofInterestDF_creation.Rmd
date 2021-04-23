@@ -35,15 +35,15 @@ This way we can link 5724 Cases between STS and AIMS.
 
 ```{r}
 
-Cases_of_Interest08<-merge(x=STS_filtered, y= select(	Text08,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest09<-merge(x=STS_filtered, y= select(	Text09,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest10<-merge(x=STS_filtered, y= select(	Text10,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest11<-merge(x=STS_filtered, y= select(	Text11,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest12<-merge(x=STS_filtered, y= select(	Text12,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest13<-merge(x=STS_filtered, y= select(	Text13,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest14<-merge(x=STS_filtered, y= select(	Text14,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest15<-merge(x=STS_filtered, y= select(	Text15,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
-Cases_of_Interest16<-merge(x=STS_filtered, y= select(	Text16,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest08<-merge(x=STS_filtered, y= dplyr::select(	Text08,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest09<-merge(x=STS_filtered, y= dplyr::select(	Text09,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest10<-merge(x=STS_filtered, y= dplyr::select(	Text10,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest11<-merge(x=STS_filtered, y= dplyr::select(	Text11,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest12<-merge(x=STS_filtered, y= dplyr::select(	Text12,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest13<-merge(x=STS_filtered, y= dplyr::select(	Text13,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest14<-merge(x=STS_filtered, y= dplyr::select(	Text14,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest15<-merge(x=STS_filtered, y= dplyr::select(	Text15,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
+Cases_of_Interest16<-merge(x=STS_filtered, y= dplyr::select(	Text16,-Label,-ItemID) , by.x=c( "Surgery_Date","Patient_ID"), by.y=c("Time","Text"))
 
 # Cases_of_InteresList <- list(Cases_of_Interest08, Cases_of_Interest09, Cases_of_Interest10,Cases_of_Interest11,Cases_of_Interest12,Cases_of_Interest13,Cases_of_Interest14,Cases_of_Interest15,Cases_of_Interest16)
 # names( Cases_of_InteresList)<- c("Cases_of_Interest08", "Cases_of_Interest09", "Cases_of_Interest10", "Cases_of_Interest11", "Cases_of_Interest12", "Cases_of_Interest13","Cases_of_Interest14","Cases_of_Interest15", "Cases_of_Interest16")
@@ -70,9 +70,18 @@ CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest14)
 CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest15)
 CasesofInterestDF<-union_all(CasesofInterestDF, Cases_of_Interest16)
 
-#write.csv(CasesofInterestDF, 'CasesofInterestDF.csv')
+# write.csv(CasesofInterestDF, 'CasesofInterestDF.csv')
 
-write.xlsx(CasesofInterestDF[,c('Patient_ID','Surgery_Date')], 'patientslist.xlsx')
+
+
+#write.xlsx(CasesofInterestDF[,c('Patient_ID','Surgery_Date')], 'patientslist.xlsx')
 ```
+
+# Export
+
+```{r eval=FALSE, include=FALSE}
+saveRDS(CasesofInterestDF, file = "CasesofInterestDF.rds")
+```
+
 
 

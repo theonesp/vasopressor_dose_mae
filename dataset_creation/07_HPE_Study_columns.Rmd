@@ -6,7 +6,8 @@ output:
     toc: true
     theme: united
 ---
-# Load the enviroment and data
+
+# Environment
 
 ```{r}
 
@@ -14,8 +15,9 @@ output:
 
 #load libs
 library(dplyr)
-library(xlsx)
+#library(xlsx)
 library(compare)
+library(magrittr)
 ```
 
 # Hypothension episodes location dataset
@@ -94,7 +96,7 @@ mutate(AUT50MAP_total_ratio=round(AUT50MAP_total_min/duration_Surgery_min,2),
        )
 ```
 
-##AWI MAP >= 51 <=60 mmHg length per period and ratios
+## AWI MAP >= 51 <=60 mmHg length per period and ratios
 
 ```{r}
 
@@ -231,10 +233,14 @@ AUT65MAP[is.na(AUT65MAP)]<-0
 library(compare)
 
 AUT65MAP_preCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(preCPB==1 & MAP <65) %>% dplyr::summarise(AUT65MAP_preCPB_min = n()*15/60)
+AUT65MAP_preCPB[is.na(AUT65MAP_preCPB)]<-0
 
 AUT65MAP_CPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>%dplyr::filter(CPB==1 & MAP <65) %>% dplyr::summarise(AUT65MAP_CPB_min = n()*15/60)
+AUT65MAP_CPB[is.na(AUT65MAP_CPB)]<-0
 
 AUT65MAP_postCPB<-VitalsignsandCPBTimes %>% dplyr::group_by(Case_Name) %>% dplyr::filter(postCPB==1 & MAP <65) %>% dplyr::summarise(AUT65MAP_postCPB_min = n()*15/60)
+AUT65MAP_postCPB[is.na(AUT65MAP_postCPB)]<-0
+
 
 require(plyr)
 AUT65MAP<-join_all(list(AUT65MAP,AUT65MAP_preCPB,AUT65MAP_CPB,AUT65MAP_postCPB), by ='Case_Name')
@@ -243,13 +249,20 @@ AUT65MAP<-join_all(list(AUT65MAP,AUT65MAP_preCPB,AUT65MAP_CPB,AUT65MAP_postCPB),
 
 AllPeriodswith_AUT_AOT_and_AWI_DF<-left_join(AllPeriodswith_AUT_AOT_and_AWI_DF,AUT65MAP)
 
+#percentage adjusting by total surgery
+
 AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
 mutate(AUT65MAP_total_ratio=round(AUT65MAP_total_min/duration_Surgery_min,2),
        AUT65MAP_preCPB_ratio=round(AUT65MAP_preCPB_min/duration_preCPB_min,2),
        AUT65MAP_CPB_ratio=round(AUT65MAP_CPB_min/duration_CPB_min,2),
        AUT65MAP_postCPB_ratio=round(AUT65MAP_postCPB_min/duration_postCPB_min,2)
        )
+
+
 ```
+
+
+
 
 # SBP
 
@@ -411,7 +424,7 @@ AUC under 65 mmHg Dataset creation
 ```{r}
 
 detach("package:plyr")
-AUC65MAP<-VitalsignsF%>%
+AUC65MAP_total<-VitalsignsF%>%
 dplyr::select(Case_Name, MAP)%>%
 filter(MAP<65) %>%
 mutate(rectangle=(65-MAP)*0.25) %>%
@@ -421,11 +434,32 @@ arrange(Case_Name)
 
 AUC65MAP_CPB<-VitalsignsandCPBTimes %>%
 dplyr::group_by(Case_Name) %>%
-dplyr::filter(CPB==1 & MAP <65) %>%
+dplyr::filter(CPB ==1 & MAP < 65) %>%
 mutate(rectangle=(65-MAP)*0.25) %>%
 group_by(Case_Name)%>%
-summarise(AUC65MAP_CPB_total_mmHgmin = sum(rectangle)) %>%
+summarise(AUC65MAP_CPB_mmHgmin = sum(rectangle)) %>%
 arrange(Case_Name)
+
+AUC65MAP_preCPB<-VitalsignsandCPBTimes %>%
+dplyr::group_by(Case_Name) %>%
+dplyr::select(Case_Name, MAP, preCPB) %>%
+dplyr::filter(preCPB ==1 & MAP < 65) %>%
+mutate(rectangle=(65-MAP)*0.25) %>%
+dplyr::group_by(Case_Name)%>%
+dplyr::summarise(AUC65MAP_preCPB_mmHgmin = sum(rectangle))
+
+AUC65MAP_postCPB<-VitalsignsandCPBTimes %>%
+dplyr::group_by(Case_Name) %>%
+dplyr::select(Case_Name, MAP, postCPB) %>%
+dplyr::filter(postCPB ==1 & MAP < 65) %>%
+mutate(rectangle=(65-MAP)*0.25) %>%
+dplyr::group_by(Case_Name)%>%
+dplyr::summarise(AUC65MAP_postCPB_mmHgmin = sum(rectangle))
+
+
+AUC65MAP_outsideCPB<-inner_join(AUC65MAP_total,AUC65MAP_CPB)%>%
+  dplyr::mutate(AUC65MAP_outsideCPB_mmHgmin = AUC65MAP_total_mmHgmin - AUC65MAP_CPB_mmHgmin )%>%
+  dplyr::select(Case_Name,AUC65MAP_outsideCPB_mmHgmin)
 
 ```
 
@@ -446,103 +480,125 @@ summarise(AOC65MAP_total_mmHgmin = sum(rectangle)) %>%
 arrange(Case_Name)
 ```
 
-### Combined TWA & AUC MAP <= 65 and All_AUC65MAP_variables Variable Creation
+# Final TWA, Duration & AUC MAP <= 65 and All_AUC65MAP_variables Variable Creation
 
 TWA-MAP under 65 mmHg dataset creation
 
 ```{r}
 require(dplyr)
-All_AUC65MAP_variables<-left_join(AllPeriodsDF,AUC65MAP)%>%
-dplyr::select(Case_Name, duration_Surgery_min,AUC65MAP_total_mmHgmin)%>%
-mutate(TWA65MAP_total_mmHg=round(AUC65MAP_total_mmHgmin/duration_Surgery_min,2)) %>%
-dplyr::select(Case_Name,AUC65MAP_total_mmHgmin,TWA65MAP_total_mmHg)
 
-All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables,AUC65MAP_CPB)
+# TWA65MAP_total_mmHg creation
+
+All_AUC65MAP_variables<-left_join(AllPeriodsDF,AUC65MAP_total)%>%
+mutate(TWA65MAP_total_mmHg=round(AUC65MAP_total_mmHgmin/duration_Surgery_min,2)) 
+
 #In case we want to add  TWA:
-# dplyr::select(Case_Name, duration_Surgery_min,AUC65MAP_CPB_total_mmHgmin)%>%
+# dplyr::select(Case_Name, duration_Surgery_min,AUC65MAP_CPB_mmHgmin)%>%
 #   mutate(TWA65MAP_total_mmHg=round(AUC65MAP_total_mmHgmin/duration_Surgery_min,2)) %>%
 #   select(Case_Name,AUC65MAP_total_mmHgmin,TWA65MAP_total_mmHg)
 
 All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables, AOC65MAP)
 # those that didn't have values <65 or >=65 spent 0 minutes in the threshold.
+
+# TWA65MAP_CPB_mmHg creation
+
+All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables,AUC65MAP_CPB)%>%
+mutate(TWA65MAP_CPB_mmHg=round(AUC65MAP_CPB_mmHgmin/duration_Surgery_min,2)) 
+
+# TWA65MAP_outsideCPB_mmHg creation
+
+All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables,AUC65MAP_outsideCPB)%>%
+mutate(TWA65MAP_outsideCPB_mmHg=round((AUC65MAP_total_mmHgmin-AUC65MAP_CPB_mmHgmin)/duration_Surgery_min,2))
+
+# TWA65MAP_preCPB_mmHg creation
+
+All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables,AUC65MAP_preCPB)%>%
+mutate(TWA65MAP_preCPB_mmHg=round(AUC65MAP_preCPB_mmHgmin/duration_Surgery_min,2)) 
+
+
+# TWA65MAP_postCPB_mmHg creation
+
+All_AUC65MAP_variables<-left_join(All_AUC65MAP_variables,AUC65MAP_postCPB)%>%
+mutate(TWA65MAP_postCPB_mmHg=round(AUC65MAP_postCPB_mmHgmin/duration_Surgery_min,2)) 
+
+# Select only newly created variables
+
+All_AUC65MAP_variables<-All_AUC65MAP_variables%>%
+  dplyr::select(Case_Name
+                ,AUC65MAP_total_mmHgmin
+                ,TWA65MAP_total_mmHg
+                ,AOC65MAP_total_mmHgmin
+                
+                ,AUC65MAP_CPB_mmHgmin
+                ,TWA65MAP_CPB_mmHg
+                
+                ,AUC65MAP_outsideCPB_mmHgmin
+                ,TWA65MAP_outsideCPB_mmHg
+                
+                ,AUC65MAP_preCPB_mmHgmin
+                ,TWA65MAP_preCPB_mmHg
+                
+                ,AUC65MAP_postCPB_mmHgmin
+                ,TWA65MAP_postCPB_mmHg
+                )
+
 All_AUC65MAP_variables[is.na(All_AUC65MAP_variables)]<-0
 
 ```
 
-# REPLACING NA with 0
+### Percentage spent in Hypothension
 
-## Replacing 0 in CPB related calculated colums
+percentage adjusting by total time of hypotension.
 
-What to do for those CPB-related variables that have no CPB times? 
-_We exclude those cases_
+IOH_cat
+  group=1 if AUT65MAP_CPB_IOH_ratio>=0.8
+, group=2 if AUT65MAP_CPB_IOH_ratio>=0.6 and  AUT65MAP_CPB_IOH_ratio<0.8 
+, group=3 if AUT65MAP_CPB_IOH_ratio<0.6
 
-```{r eval=FALSE, include=FALSE}
 
-#nested if else function creation
 
-i <- function(if_stat, then) {
-  if_stat <- lazyeval::expr_text(if_stat)
-  then    <- lazyeval::expr_text(then)
-  sprintf("ifelse(%s, %s, ", if_stat, then)
-}
+```{r}
+AllPeriodswith_AUT_AOT_and_AWI_DF[is.na(AllPeriodswith_AUT_AOT_and_AWI_DF)]<-0
 
-e <- function(else_ret) {
-  else_ret <- lazyeval::expr_text(else_ret)
-  else_ret
-}
+AllPeriodswith_AUT_AOT_and_AWI_DF<-AllPeriodswith_AUT_AOT_and_AWI_DF%>%
+  mutate(
+   AUT65MAP_preCPB_IOH_ratio = round(AUT65MAP_preCPB_min/AUT65MAP_total_min,2)
+  ,AUT65MAP_CPB_IOH_ratio = round(AUT65MAP_CPB_min/AUT65MAP_total_min,2)
+  ,AUT65MAP_postCPB_IOH_ratio = round(AUT65MAP_postCPB_min/AUT65MAP_total_min,2)
+  ,AUT65MAP_outside_CPB_IOH_ratio = AUT65MAP_preCPB_IOH_ratio + AUT65MAP_postCPB_IOH_ratio
+  ,IOH_cat = case_when(   AUT65MAP_CPB_IOH_ratio >= .8                                     ~ 1
+                        , AUT65MAP_CPB_IOH_ratio >= .6 & AUT65MAP_CPB_IOH_ratio < .8  ~ 2
+                        , AUT65MAP_CPB_IOH_ratio <  .6                           ~ 3
+                        )
+)
+```
 
-ie <- function(...) {
-  args <- list(...)
+# 10 minutes as unit of analysis
+
+```{r}
+toMatch<-c('65MAP')
+cols_to_mutate<-names(AllPeriodswith_AUT_AOT_and_AWI_DF[grep(toMatch, names(AllPeriodswith_AUT_AOT_and_AWI_DF)) ])
+
+
+
+All_AUC65MAP_variables%<>%mutate(
+		AUC65MAP_total_mmHgtenmins=AUC65MAP_total_mmHgmin/10,
+		AOC65MAP_total_mmHgtenmins=AOC65MAP_total_mmHgmin/10,
+		AUC65MAP_CPB_mmHgtenmins=AUC65MAP_CPB_mmHgmin/10,
+		AUC65MAP_outsideCPB_mmHgtenmins=AUC65MAP_outsideCPB_mmHgmin/10,
+		AUC65MAP_preCPB_mmHgtenmins=AUC65MAP_preCPB_mmHgmin/10,
+		AUC65MAP_postCPB_mmHgtenmins=AUC65MAP_postCPB_mmHgmin/10
+)
+
   
-  for (i in 1:(length(args) - 1) ) {
-      if (substr(args[[i]], 1, 6) != "ifelse") {
-        stop("All but the last argument, need to be i functions.", call. = FALSE)
-      }
-  }
-  if (substr(args[[length(args)]], 1, 6) == "ifelse"){
-    stop("Last argument needs to be an e function.", call. = FALSE)
-  }
-  args$final <- paste(rep(')', length(args) - 1), collapse = '')
-  eval_string <- do.call('paste', args)
-  eval(parse(text = eval_string))
-}
-
-
-
-preCPBcols<-names(AllPeriodswith_AUT_AOT_and_AWI_DF[,grep('preCPB_ratio|preCPB_min', names(AllPeriodswith_AUT_AOT_and_AWI_DF))])
-for (n in 1:length(CPBcols)) {
-  colnam<-CPBcols[n]
-#print(AllPeriodswith_AUT_AOT_and_AWI_DF[,colnam] )
-AllPeriodswith_AUT_AOT_and_AWI_DF[,colnam] <- 
-#    i( is.na(AllPeriodswith_AUT_AOT_and_AWI_DF[,colnam])  ,   NA),
-    ie(
-    i(  is.na(AllPeriodswith_AUT_AOT_and_AWI_DF$Sur_Begin_Time) ,   1),
-    i(  is.na(AllPeriodswith_AUT_AOT_and_AWI_DF$CPB_Begin_Time) ,   2),
-    e(0)
-  )
-
-i(if_stat = 3>4,2)
-
-}
-
+AllPeriodswith_AUT_AOT_and_AWI_DF %<>%
+     mutate( 
+AUT65MAP_total_tenmins=AUT65MAP_total_min/10,
+AUT65MAP_preCPB_tenmins=AUT65MAP_preCPB_min/10,
+AUT65MAP_CPB_tenmins=AUT65MAP_CPB_min/10,
+AUT65MAP_postCPB_tenmins=AUT65MAP_postCPB_min/10
+       )
 
 ```
 
-## checking durations with neg values
-
-```{r eval=FALSE, include=FALSE}
-durations<-names(FinalHemodynamicsDataset[,grep('_min', names(FinalHemodynamicsDataset))])
-for (i in 1:length(durations)) {
-  colnam<-durations[i]
-  if(sum(FinalHemodynamicsDataset[,colnam] <0, na.rm = TRUE)>0){
-      cat(colnam)
-   print(sum(FinalHemodynamicsDataset[,colnam] <0, na.rm = TRUE))
-  }
-}
-```
-
-
-```{r eval=FALSE, include=FALSE}
-STS_filtered$Stroke[is.na(STS_filtered$AUT50MAP_total_min)]<-0
-```
 

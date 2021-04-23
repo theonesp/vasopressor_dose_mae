@@ -7,6 +7,8 @@ toc: TRUE
 ---
 
 
+# Environment
+
 ```{r}
 library(dplyr)
 library(summarytools)
@@ -146,7 +148,6 @@ STS_full_dataset$Admission_Date<-as.Date(STS_full_dataset$Admission_Date, "%Y-%m
 STS_full_dataset$Discharge_Date<-as.Date(STS_full_dataset$Discharge_Date, "%Y-%m-%d")
 
 write.table(STS_full_dataset,'STS_full_dataset.txt')
-view(dfSummary(STS_full_dataset))
 
 #AIMS dataset goes up to June 2016
 STS_full_dataset_2008_2016<-subset(STS_full_dataset, format(as.Date(Surgery_Date))<='2016-06-31')
@@ -199,9 +200,7 @@ if (name %in%  BINcolumns){
 write.csv(STS_full_dataset_2008_2016,'STS_full_dataset_2008_2016.csv')
 ```
 
-STS
-
-## Filtering STS dataset
+## Exclusion Criteria
 
 ```{r}
 #we exclude those patients not in our study Category and status
@@ -211,9 +210,9 @@ STS_filtered<-STS_full_dataset_2008_2016 %>%
 filter(!grepl('Cancelled case',Category)) %>%
 filter(grepl('Urgen|Elective', Status))
 
+
+
 ```
-
-
 
 ## Data Mapping STS dataset
 
@@ -378,7 +377,8 @@ STS_filtered$PreOpMedACEIARBI48hrs<-as.factor(STS_filtered$PreOpMedACEIARBI48hrs
 
 ```
 
-###Outcomes
+### Outcomes
+
 ```{r}
 
 #Cleaning Reop_Bleeding
@@ -659,7 +659,8 @@ STS_filtered$Infection[is.na(STS_filtered$Infection)]<-0
   
 ```
 
-##Data Mapping STS new created columns
+## Data Mapping STS new created columns
+
 ```{r}
 #Cleaning Congestive_Heart_Failure
 STS_filtered$Congestive_Heart_Failure[is.na(STS_filtered$Congestive_Heart_Failure)]<-0
@@ -676,7 +677,7 @@ STS_filtered$Previous_myocardial_infarction[STS_filtered$Previous_myocardial_inf
 ```
 
 
-#Processing Outcomes
+# Processing Outcomes
 
 ```{r}
 
@@ -692,12 +693,8 @@ STS_filtered$Stroke[is.na(STS_filtered$Stroke)]<-0
 
 ```
 
-
-
-
-
-
 # Any Mayor Adverse Event Creation
+
 ```{r}
 #We create an extra column in case any Mayor Adverse Event is ocuring during surgery
 
@@ -716,7 +713,29 @@ STS_filtered['Total_MAE']<-rowSums(STS_filtered[,listOuts])
 
 ```
 
-#initial tests
+# New composite outcome
+
+```{r}
+STS_filtered<-STS_filtered%>%
+               mutate(
+               RFDS=if_else(
+                 Renal_Failure == 1 
+               | Death ==1
+               | Stroke ==1,1,0)
+               ,RFD=if_else(
+                 Renal_Failure == 1 
+               | Death ==1,1,0)
+               ,DS=if_else(
+                 Death ==1
+               | Stroke ==1,1,0)
+               ,RFS=if_else(
+                 Renal_Failure == 1 
+               | Stroke ==1,1,0)
+               )
+```
+
+
+# initial tests
 
 ```{r}
 multi.fun <- function(x) {cbind(freq = table(x), percentage = round(prop.table(table(x))*100,2))}

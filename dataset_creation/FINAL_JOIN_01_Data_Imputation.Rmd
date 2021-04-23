@@ -1,0 +1,107 @@
+---
+title: "Data Imputation"
+author: "Miguel Angel Armengol de la Hoz"
+date: "10 de agosto de 2017"
+output: 
+  html_document:
+    toc: true
+    theme: united
+---
+
+# Libraries load
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(reshape2)
+library(summarytools)
+library(readxl)
+library(reshape)
+library(Amelia)
+```
+
+# Imputing missing data
+
+## Mean EF
+
+```{r}
+FinalHemodynamicsDataset['mean_ef_median_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$mean_ef)
+,median(FinalHemodynamicsDataset$mean_ef,na.rm = T)
+,FinalHemodynamicsDataset$mean_ef
+)
+```
+
+
+## Delta HTC
+
+```{r}
+FinalHemodynamicsDataset['delta_HCT_pct_median_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$delta_HCT_pct)
+,median(FinalHemodynamicsDataset$delta_HCT_pct,na.rm = T)
+,FinalHemodynamicsDataset$delta_HCT_pct
+)
+```
+
+## Cross Clamp Time
+
+```{r}
+FinalHemodynamicsDataset['Cross_Clamp_Time_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$Cross_Clamp_Time)
+,median(FinalHemodynamicsDataset$Cross_Clamp_Time,na.rm = T)
+,as.double(FinalHemodynamicsDataset$Cross_Clamp_Time)
+)
+```
+
+## STS_risk
+
+### Mean and median imputation
+
+We chose median imputation after having run the model with the best AUROC among all imputations.
+
+```{r}
+
+FinalHemodynamicsDataset['STS_RiskAlgorithm_mean_imp']<-if_else(
+is.na(FinalHemodynamicsDataset$STS_RiskAlgorithm)
+,mean(FinalHemodynamicsDataset$STS_RiskAlgorithm,na.rm = T)
+,FinalHemodynamicsDataset$STS_RiskAlgorithm
+)
+  
+FinalHemodynamicsDataset['STS_RiskAlgorithm_median_imp']<-ifelse(
+is.na(FinalHemodynamicsDataset$STS_RiskAlgorithm)
+,median(FinalHemodynamicsDataset$STS_RiskAlgorithm,na.rm = T)
+,FinalHemodynamicsDataset$STS_RiskAlgorithm)
+```
+
+### Multiple imputation
+
+```{r}
+
+
+dataforimputingwithAmelia<-FinalHemodynamicsDataset[,c('Case_Name','Any_MAE','RFDS','Gender','Age','Category','duration_Surgery_min','total_pressors_formula_mg','milrinone','delta_HCT_pct_median_imp','mean_ef_median_imp','AUC65MAP_total_mmHgmin','AUC65MAP_CPB_mmHgmin','AUC65MAP_outsideCPB_mmHgmin'                                         ,'Cross_Clamp_Time_imp','duration_CPB_min','Anesthesiologist','STS_RiskAlgorithm')]
+
+
+bds <- matrix(c(which(names(dataforimputingwithAmelia)=='STS_RiskAlgorithm')
+                , 0, 100)# we need a matrix of bounds( the first is the column for the bounded variable, min, max)
+ #min (0) and max (100) taken from STS risk scores docummentation             
+              , nrow = 1, ncol = 3) 
+
+
+relevant_data_imputation_matrix<-amelia(dataforimputingwithAmelia
+                                        ,parallel = "multicore"
+                                        ,idvars = 'Case_Name'
+                                        ,noms = c('Any_MAE','RFDS','Gender','Category','Anesthesiologist')
+                               #, ords = '' #only used when imputing categorical variables
+                               ,bounds = bds
+
+                               )
+
+FinalHemodynamicsDataset$STS_RiskAlgorithm_multiple_imp<-relevant_data_imputation_matrix$imputations$imp3$STS_RiskAlgorithm
+
+#STS risk cannot be negative
+# to avoid problems when using log
+#there can not be 0 values in a log(variable) in a logreg
+```
+
+
+
+

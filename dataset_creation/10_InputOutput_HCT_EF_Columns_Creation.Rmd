@@ -20,7 +20,7 @@ library(reshape)
 
 # Data Load
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # IO_data_Blood <- read_excel("~/BIG FILES/Phenotyping/Hemodynamics_IO_Blood.xlsx")
 # IO_data_Fluids <- read_excel("~/BIG FILES/Phenotyping/Hemodynamics_IO_Fluids.xlsx")
 # IO_data_Urine_Output <- read_excel("~/BIG FILES/Phenotyping/Hemodynamics_IO_Urine_Output.xlsx")

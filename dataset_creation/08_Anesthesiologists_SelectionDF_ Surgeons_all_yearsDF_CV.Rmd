@@ -25,9 +25,19 @@ library(dplyr)
 ```{r}
 ComboDF<- rbind(Combo08, Combo09, Combo10,Combo11,Combo12,Combo13,Combo14,Combo15,Combo16)
 
-#Correcting the mistake in duplicate physician 
+#Correcting the mistake in duplicate physician Correct Name:Qi Ott, MD
+ComboDF$C_Item[ComboDF$C_Item==21342]<-21619
+# Combo09$C_Item[Combo09$C_Item==21342]<-21619
+# Combo10$C_Item[Combo10$C_Item==21342]<-21619
+# Combo11$C_Item[Combo11$C_Item==21342]<-21619
+# Combo12$C_Item[Combo12$C_Item==21342]<-21619
+# Combo13$C_Item[Combo13$C_Item==21342]<-21619
+# Combo14$C_Item[Combo14$C_Item==21342]<-21619
+# Combo15$C_Item[Combo15$C_Item==21342]<-21619
+# Combo16$C_Item[Combo16$C_Item==21342]<-21619
 
-# code removed since it contained phi
+#Correcting the mistake in duplicate physician Correct Name:Qi Ott, MD
+ComboDF$C_Item[ComboDF$C_Item==21342]<-21619
 
 ComboDF$Time<-NULL
 ComboDF$ItemID<-NULL
@@ -48,7 +58,8 @@ In this list we select Anesthesiologists performing overall >=30 surgeries from 
 ```{r}
 #Selecting anesthesiologists
 library(dplyr)
-# code removed since it contained phi
+Anesthesiologists_selection<-subset(ComboDF, ComboDF$C_Item %in% c(20025,20026,20030,20036,20038,20051,20156,20359,20556,20935,21084,21105,21379,21507,21619,21839)
+                                    & Label== 'Attending Anesthesiologist')
 
 unique(Anesthesiologists_selection)
 
@@ -60,8 +71,135 @@ Anesthesiologists_selection<-unique(Anesthesiologists_selection)
 
 ```
 
+## Selected Surgeons DF
 
-*code removed since it contained phi*
+This code needs to be rewriten in case we want to select surgeons under a different criteria. The list of surgeons below was selected by including only those who were performing surgery every year.
 
+```{r eval=FALSE, include=FALSE}
+#Selecting surgeons
+
+#Focus only on these 3 Surgeons
+library(dplyr)
+Surgeons_all_yearsDF<-subset(ComboDF, ComboDF$C_Item %in% c(20306,20479,20966))
+
+Surgeons_all_yearsDF<-Surgeons_all_yearsDF %>%
+mutate(Surgeon=C_Item) %>%
+ dplyr::select(Case_Name,Surgeon)
+```
+
+
+ 1  20036 Peter J. Panzica, MD        
+ 2  20306 Khabbaz, Kamal M.D.         
+ 3  20306 Khabbaz, Kamal M.D.         
+ 4  20036 Peter J. Panzica, MD        
+ 5  20036 Peter J. Panzica, MD        
+ 6  20026 Adam B. Lerner, MD          
+ 7  20556 Balachundhar Subramaniam, MD
+ 8  20026 Adam B. Lerner, MD          
+ 9  20026 Adam B. Lerner, MD          
+10  20030 Feroze Mahmood, MD  
+
+<!-- # Coefficient of variation, as percent -->
+<!-- ```{r, eval=FALSE, include=FALSE, null_prefix=TRUE} -->
+<!-- library(dplyr) -->
+
+<!-- anesthesiologists<-unique(sort(Ljoin_AnestPlots$C_Item)) -->
+
+<!-- anesthesiologist<-20025 -->
+<!-- print(paste('Coefficient of variation, as percent for anesthesiologist:',anesthesiologist)) -->
+<!--   for(year in 2008:2016){ -->
+<!-- subset<-filter(FinalHemodynamicsDataset, format(as.Date(FinalHemodynamicsDataset$Surgery_Date),"%Y")==year & FinalHemodynamicsDataset$Anesthesiologist==anesthesiologist) -->
+<!-- print(paste('Year:',year)) -->
+<!-- print(sd(subset$, na.rm=TRUE)/ mean(subset$AUC60MAP_SL_ratio, na.rm=TRUE)*100) -->
+<!--   } -->
+
+<!-- anesthesiologist<-20026 -->
+<!-- print(paste('Coefficient of variation, as percent for anesthesiologist:',anesthesiologist)) -->
+<!--   for(year in 2008:2016){ -->
+<!-- subset<-filter(Ljoin_AnestPlots, format(as.Date(Ljoin_AnestPlots$Surgery_Date),"%Y")==year & Ljoin_AnestPlots$C_Item==anesthesiologist) -->
+<!-- print(paste('Year:',year)) -->
+<!-- print(sd(subset$AUC60MAP_SL_ratio, na.rm=TRUE)/ mean(subset$AUC60MAP_SL_ratio, na.rm=TRUE)*100) -->
+<!--   } -->
+
+<!-- anesthesiologist<-20030 -->
+<!-- print(paste('Coefficient of variation, as percent for anesthesiologist:',anesthesiologist)) -->
+<!--   for(year in 2008:2016){ -->
+<!-- subset<-filter(Ljoin_AnestPlots, format(as.Date(Ljoin_AnestPlots$Surgery_Date),"%Y")==year & Ljoin_AnestPlots$C_Item==anesthesiologist) -->
+<!-- print(paste('Year:',year)) -->
+<!-- print(sd(subset$AUC60MAP_SL_ratio, na.rm=TRUE)/ mean(subset$AUC60MAP_SL_ratio, na.rm=TRUE)*100) -->
+<!--   } -->
+
+<!-- anesthesiologist<-20036 -->
+<!-- print(paste('Coefficient of variation, as percent for anesthesiologist:',anesthesiologist)) -->
+<!--   for(year in 2008:2016){ -->
+<!-- subset<-filter(Ljoin_AnestPlots, format(as.Date(Ljoin_AnestPlots$Surgery_Date),"%Y")==year & Ljoin_AnestPlots$C_Item==anesthesiologist) -->
+<!-- print(paste('Year:',year)) -->
+<!-- print(sd(subset$AUC60MAP_SL_ratio, na.rm=TRUE)/ mean(subset$AUC60MAP_SL_ratio, na.rm=TRUE)*100) -->
+<!--   } -->
+
+<!-- anesthesiologist<-20051 -->
+<!-- print(paste('Coefficient of variation, as percent for anesthesiologist:',anesthesiologist)) -->
+<!--   for(year in 2008:2016){ -->
+<!-- subset<-filter(Ljoin_AnestPlots, format(as.Date(Ljoin_AnestPlots$Surgery_Date),"%Y")==year & Ljoin_AnestPlots$C_Item==anesthesiologist) -->
+<!-- print(paste('Year:',year)) -->
+<!-- print(sd(subset$AUC60MAP_SL_ratio, na.rm=TRUE)/ mean(subset$AUC60MAP_SL_ratio, na.rm=TRUE)*100) -->
+<!--   } -->
+
+<!-- anesthesiologist<-20359 -->
+<!-- print(paste('Coefficient of variation, as percent for anesthesiologist:',anesthesiologist)) -->
+<!--   for(year in 2008:2016){ -->
+<!-- subset<-filter(Ljoin_AnestPlots, format(as.Date(Ljoin_AnestPlots$Surgery_Date),"%Y")==year & Ljoin_AnestPlots$C_Item==anesthesiologist) -->
+<!-- print(paste('Year:',year)) -->
+<!-- print(sd(subset$AUC60MAP_SL_ratio, na.rm=TRUE)/ mean(subset$AUC60MAP_SL_ratio, na.rm=TRUE)*100) -->
+<!--   } -->
+
+<!-- anesthesiologist<-20556 -->
+<!-- print(paste('Coefficient of variation, as percent for anesthesiologist:',anesthesiologist)) -->
+<!--   for(year in 2008:2016){ -->
+<!-- subset<-filter(Ljoin_AnestPlots, format(as.Date(Ljoin_AnestPlots$Surgery_Date),"%Y")==year & Ljoin_AnestPlots$C_Item==anesthesiologist) -->
+<!-- print(paste('Year:',year)) -->
+<!-- print(sd(subset$AUC60MAP_SL_ratio, na.rm=TRUE)/ mean(subset$AUC60MAP_SL_ratio, na.rm=TRUE)*100) -->
+<!--   } -->
+<!-- ``` -->
+
+
+<!-- ## Finding providers appearing all years -->
+
+<!-- ```{r eval=FALSE, include=FALSE} -->
+<!-- appearance_08<-data.frame(C_Item=unique(sort(Combo08$C_Item))) -->
+<!-- appearance_08['appearing08']<-1 -->
+<!-- appearance_09<-data.frame(C_Item=unique(sort(Combo09$C_Item))) -->
+<!-- appearance_09['appearing09']<-1 -->
+<!-- appearance_10<-data.frame(C_Item=unique(sort(Combo10$C_Item))) -->
+<!-- appearance_10['appearing10']<-1 -->
+<!-- appearance_11<-data.frame(C_Item=unique(sort(Combo11$C_Item))) -->
+<!-- appearance_11['appearing11']<-1 -->
+<!-- appearance_12<-data.frame(C_Item=unique(sort(Combo12$C_Item))) -->
+<!-- appearance_12['appearing12']<-1 -->
+<!-- appearance_13<-data.frame(C_Item=unique(sort(Combo13$C_Item))) -->
+<!-- appearance_13['appearing13']<-1 -->
+<!-- appearance_14<-data.frame(C_Item=unique(sort(Combo14$C_Item))) -->
+<!-- appearance_14['appearing14']<-1 -->
+<!-- appearance_15<-data.frame(C_Item=unique(sort(Combo15$C_Item))) -->
+<!-- appearance_15['appearing15']<-1 -->
+<!-- appearance_16<-data.frame(C_Item=unique(sort(Combo16$C_Item))) -->
+<!-- appearance_16['appearing16']<-1 -->
+
+<!-- citemlists<-left_join(data.frame(C_Item=unique(sort(ComboDF$C_Item))), appearance_08) -->
+<!-- citemlists<-left_join(citemlists, appearance_09) -->
+<!-- citemlists<-left_join(citemlists, appearance_10) -->
+<!-- citemlists<-left_join(citemlists, appearance_11) -->
+<!-- citemlists<-left_join(citemlists, appearance_12) -->
+<!-- citemlists<-left_join(citemlists, appearance_13) -->
+<!-- citemlists<-left_join(citemlists, appearance_14) -->
+<!-- citemlists<-left_join(citemlists, appearance_15) -->
+<!-- citemlists<-left_join(citemlists, appearance_16) -->
+<!-- citemlists[is.na(citemlists)]<-0 -->
+
+<!-- #creating an extra column with providers appearing all years -->
+<!-- library(dplyr) -->
+<!-- citemlists<-citemlists %>% -->
+<!-- mutate(appearingallyears=if_else(rowSums(citemlists[,-1])==9,1,0)) -->
+<!-- ``` -->
 
 

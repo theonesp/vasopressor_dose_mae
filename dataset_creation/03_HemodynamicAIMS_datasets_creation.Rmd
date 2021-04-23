@@ -1,6 +1,6 @@
 ---
 title: "3_HemodynamicAIMS_datasets_creation"
-author: "Miguel Ángel Armengol de la Hoz"
+author: "Miguel ?ngel Armengol de la Hoz"
 date: "27 de febrero de 2018"
 output: html_document
 toc: TRUE
@@ -11,9 +11,9 @@ library(dplyr)
 #load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
 ```
 
-#AIMS
+# AIMS
 
-#Creatintg Lists to analyze
+# Creatintg Lists to analyze
 ```{r}
 ComboList <- list(Combo08, Combo09, Combo10,Combo11,Combo12,Combo13,Combo14,Combo15,Combo16)
 names(ComboList)<- c("Combo08", "Combo09", "Combo10", "Combo11", "Combo12", "Combo13","Combo14","Combo15", "Combo16")
@@ -39,7 +39,7 @@ names( BolusDrugsList)<- c("BolusDrugs08", "BolusDrugs09", "BolusDrugs10", "Bolu
 
 ```
 
-#Anesthesiologists 
+# Anesthesiologists 
 ```{r}
 totalnumberOFAnesthesiologists<-union_all(
   Combo08$C_Item[Combo08$Label=='Attending Anesthesiologist'],

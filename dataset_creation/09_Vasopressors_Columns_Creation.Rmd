@@ -44,7 +44,7 @@ Epinephrine
 
 ## Load data and convert units
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 library(readr)
 library(readxl)
 DrugTotals_forstudy <- read_csv("~/BIG FILES/Phenotyping/DrugTotals_forstudy.csv", 
@@ -103,20 +103,27 @@ library(data.table)
 r_drugsinformula<-dcast(drugsinformula, CASENUMBER ~ DRUGTEXT, value.var='total_indiv_drug')
 r_drugsinformula[is.na(r_drugsinformula)]<-0
 
-#generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinetotal / 10) + milrinonetotal/5
+#generate vasopressors = epinephrinetotal + norepinephrinetotal + (phenylephrinetotal / 10) 
 
-generate_vasopressors <- function(epinephrinetotal,norepinephrinetotal,phenylephrinetotal,milrinonetotal,vasopressintotal){
-return(epinephrinetotal+norepinephrinetotal+(phenylephrinetotal/10)+(milrinonetotal/5)+
+# + milrinonetotal/5 EXCLUDED FROM THE FORMULA (it was the last term 09202020)
+
+# we decided to exclude milrinone per reviewer request for our September 2020 resubmission
+
+generate_vasopressors <- function(epinephrinetotal,norepinephrinetotal,phenylephrinetotal,vasopressintotal){
+return(epinephrinetotal+norepinephrinetotal+(phenylephrinetotal/10)+
          (vasopressintotal * 8.33)
        )
 }
 r_drugsinformula<-r_drugsinformula%>%
-  mutate(total_pressors_formula_mg=round(generate_vasopressors(Epinephrine, Norepinephrine,Phenylephrine,Milrinone,Vasopressin) ,3))
+  mutate(
+    total_pressors_formula_mg=round(generate_vasopressors(Epinephrine, Norepinephrine,Phenylephrine,Vasopressin) ,3)
+    ,milrinone=Milrinone
+    )
 colnames(r_drugsinformula)[1]<-'Case_Name'
 ```
 
 
-#___NOT_USED______
+#___NOT_USED ANYMORE______
 
 # Correcting NA
 
@@ -129,9 +136,9 @@ r_drugsinformula[is.na(r_drugsinformula)]<-0
 ```
 
 
-#OLD Bolus Drugs
+# OLD Bolus Drugs
 
-##Bolus Drugs quantities
+## Bolus Drugs quantities
 
 ```{r eval=FALSE, include=FALSE}
 library(dplyr)
@@ -168,7 +175,7 @@ bolusdrugspercase<-reshape(BolusDrugsDF, timevar = 'Label' , idvar = 'Case_Name'
 
 ```
 
-##Bolus Drugs binary CPB location
+## Bolus Drugs binary CPB location
 
 ```{r eval=FALSE, include=FALSE}
 library(dplyr)
@@ -279,7 +286,7 @@ BolusDrugs.bin<-inner_join(, BolusDrugs.bin)
 
 # OLD Infusion Drugs
 
-##Infusion Drugs quantities
+## Infusion Drugs quantities
 
 ```{r eval=FALSE, include=FALSE}
 library(dplyr)
@@ -312,7 +319,7 @@ Infusiondrugspercase<-reshape(InfusionDrugsDF, timevar = 'Label' , idvar = 'Case
 
 ```
 
-##Infusion Drugs binary CPB location
+## Infusion Drugs binary CPB location
 
 ```{r eval=FALSE, include=FALSE}
 library(dplyr)

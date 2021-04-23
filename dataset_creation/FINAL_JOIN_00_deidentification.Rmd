@@ -1,0 +1,126 @@
+---
+title: "FINAL_JOIN and de-identification"
+author: "Miguel Angel Armengol de la Hoz"
+output:
+  html_document:
+    toc: true
+    theme: united
+---
+
+```{r}
+#Load the enviroment
+#load("C:/BIG FILES/Phenotyping/HemodynamicProjectsDatasetFeb18.RData")
+
+```
+
+# FINAL LEFT JOIN
+
+## STS dataset with HPE columns dataset join
+
+```{r}
+library(dplyr)
+FinalHemodynamicsDataset<-inner_join(CasesofInterestDF, AllPeriodswith_AUT_AOT_and_AWI_DF)
+FinalHemodynamicsDataset$Surgery_Date<-as.Date(FinalHemodynamicsDataset$Surgery_Date, "%Y-%m-%d")
+```
+
+# Joining with AUC-related variables
+
+(AOC and TWA included)
+
+```{r}
+FinalHemodynamicsDataset<-inner_join(FinalHemodynamicsDataset,All_AUC65MAP_variables)
+```
+
+## STS and HPE dataset join with Anesthesiologists_all_yearsDF and Surgeons_all_yearsDF
+
+```{r}
+FinalHemodynamicsDataset<-left_join(FinalHemodynamicsDataset, Anesthesiologists_selection)
+#FinalHemodynamicsDataset<-left_join(FinalHemodynamicsDataset, Surgeons_all_yearsDF)
+
+```
+
+# Removing PHI
+
+```{r}
+#Remove Patient Identifier variables
+FinalHemodynamicsDataset$Patient_ID <- NULL
+FinalHemodynamicsDataset$First_Name <- NULL
+FinalHemodynamicsDataset$Last_Name <- NULL
+FinalHemodynamicsDataset$SS_Patient_ID <- NULL
+```
+
+# De-Identifying Anesthesiologists
+
+```{r}
+
+library(plyr)
+
+#Anesthesiologist
+FinalHemodynamicsDataset$Anesthesiologist<-as.character(FinalHemodynamicsDataset$Anesthesiologist)
+FinalHemodynamicsDataset$Anesthesiologist<-revalue(FinalHemodynamicsDataset$Anesthesiologist, c(
+'20025'='A','20026'='B','20030'='C','20036'='D','20038'='E','20051'='F','20156'='G','20359'='H','20556'='I','20935'='J','21084'='K','21105'='L','21379'='M','21507'='N','21619'='O','21839'='P'  
+))
+
+# Victor suggested studying providers involved in at least 30 surgeries between 2008-2016
+```
+
+# De-identifying Surgeons
+
+```{r eval=FALSE, include=FALSE}
+#Surgegon
+FinalHemodynamicsDataset$Surgeon<-as.character(FinalHemodynamicsDataset$Surgeon)
+FinalHemodynamicsDataset$Surgeon<-revalue(FinalHemodynamicsDataset$Surgeon, c('20306'="alpha", '20479' = 'beta', '20966' = 'gamma'))
+
+#We chose only Surgeons performing procedures along the 7 years but in some cases within these 7 years, none of these 3 Surgeonss are performing the procedure. in these cases Surgeons = NA
+```
+
+
+# Joining total pressors formula
+
+```{r}
+FinalHemodynamicsDataset<-inner_join(FinalHemodynamicsDataset, r_drugsinformula[,c("Case_Name","total_pressors_formula_mg","milrinone")])
+```
+
+# Input Output Data
+
+```{r}
+FinalHemodynamicsDataset<-left_join(FinalHemodynamicsDataset, IO_data)
+```
+
+# Ejection Fraction Data
+
+```{r}
+FinalHemodynamicsDataset<-left_join(FinalHemodynamicsDataset,Ejection_Fraction)
+```
+
+<!-- #Mini dataset Export -->
+<!-- ```{r} -->
+<!-- minidataset_selected_columns<-c("Case_Name","Surgery_Date","Gender","Age","Category","STSBSA","ChronicLungDisease","Death","Reop_Bleeding","Pulm_Pneumonia","Renal_Failure","Oth_Tamponade","Oth_AFib","Perioperative_MI","HbA1C","PreOpMedBetaBlockers","PreOpMedACE_ARBInhibitors","PreOpMedSteroids","PreOpMedInotropes","PreOpMedAspirin","PreOpMedLipidLowering","STS_RiskAlgorithm","STS_Pred_Deep_Stern","STS_Pred_ReOp","STS_Pred_PermCVA","STS_Pred_ProlongVent","STS_Pred_RenalFail","STS_Pred_MorbMort","STS_Pred_ShortLOS","STS_Pred_LongLOS","Hypertension.bin","CHF.bin","Cerebrovascular_Disease.bin","PreviousMI.bin","Diabetes.bin","Family_History_CAD.bin","Status","Any_MAE","Sur_Begin_Time","Sur_End_Time","CPB_Begin_Time","CPB_End_Time","duration_preCPB_min","duration_CPB_min","duration_postCPB_min","duration_Surgery_min","AUT50MAP_total_min","AUT50MAP_preCPB_min","AUT50MAP_CPB_min","AUT50MAP_postCPB_min","AUT50MAP_total_ratio","AUT50MAP_preCPB_ratio","AUT50MAP_CPB_ratio","AUT50MAP_postCPB_ratio","AWI51_60MAP_total_min","AWI51_60MAP_preCPB_min","AWI51_60MAP_CPB_min","AWI51_60MAP_postCPB_min","AWI51_60MAP_total_ratio","AWI51_60MAP_preCPB_ratio","AWI51_60MAP_CPB_ratio","AWI51_60MAP_postCPB_ratio","AWI61_65MAP_total_min","AWI61_65MAP_preCPB_min","AWI61_65MAP_CPB_min","AWI61_65MAP_postCPB_min","AWI61_65MAP_total_ratio","AWI61_65MAP_preCPB_ratio","AWI61_65MAP_CPB_ratio","AWI61_65MAP_postCPB_ratio","AUT95SBP_total_min","AUT95SBP_preCPB_min","AUT95SBP_postCPB_min","AUT95SBP_total_ratio","AUT95SBP_preCPB_ratio","AUT95SBP_postCPB_ratio","AUT30DBP_total_min","AUT30DBP_preCPB_min","AUT30DBP_postCPB_min","AUT30DBP_total_ratio","AUT30DBP_preCPB_ratio","AUT30DBP_postCPB_ratio","Anesthesiologist","Surgeon") -->
+
+<!-- FinalHemodynamicsDatasetMINI<-FinalHemodynamicsDataset[, names(FinalHemodynamicsDataset) %in% minidataset_selected_columns] -->
+
+<!-- write.table(FinalHemodynamicsDatasetMINI, "FinalHemodynamicsDatasetMINI.txt", sep="\t", row.names = FALSE) -->
+<!-- ``` -->
+
+# Solving NA porblems
+
+```{r}
+# FinalHemodynamicsDataset$AUT50MAP_total_min[is.na(FinalHemodynamicsDataset$AUT50MAP_total_min)]<-0
+# FinalHemodynamicsDataset$AUT65MAP_total_min[is.na(FinalHemodynamicsDataset$AUT65MAP_total_min)]<-0
+# FinalHemodynamicsDataset$AWI51_60MAP_total_min[is.na(FinalHemodynamicsDataset$AWI51_60MAP_total_min)]<-0
+# FinalHemodynamicsDataset$AWI61_65MAP_total_min[is.na(FinalHemodynamicsDataset$AWI61_65MAP_total_min)]<-0
+# FinalHemodynamicsDataset$AOT65MAP_total_min[is.na(FinalHemodynamicsDataset$AOT65MAP_total_min)]<-0
+
+```
+
+
+
+# Export 
+
+```{r}
+#write.table(FinalHemodynamicsDataset, "FinalHemodynamicsDataset.txt", sep="\t", row.names = FALSE)
+```
+
+
+
+

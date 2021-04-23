@@ -14,7 +14,7 @@ output:
 
 ```
 
-# Creating VitalsignsF: Merging all years of vitalsigns in one dataset
+# Creating VitalsignsF: Merging all years of vital-signs in one data-set
 
 ```{r}
 VitalsignsF <- rbind(Vitalsigns08j, Vitalsigns09j, Vitalsigns10j,Vitalsigns11j,Vitalsigns12j,Vitalsigns13j,Vitalsigns14j,Vitalsigns15j,Vitalsigns16j)
@@ -22,9 +22,9 @@ VitalsignsF <- rbind(Vitalsigns08j, Vitalsigns09j, Vitalsigns10j,Vitalsigns11j,V
 
 # Importing data for Anesthesia Induction (AI) and Anesthesia Finish (AF) Times
 
-```{r}
+```{r eval=FALSE, warning=FALSE, include=FALSE}
 library(readxl)
-Anesthesia_Finish_Times <- read_excel("C:/BIG FILES/Phenotyping/hemodynamics/Anesthesia Finish Times.xlsx", 
+Anesthesia_Finish_Times <- read_excel("C:/BIG FILES/Phenotyping/Anesthesia Finish Times.xlsx", 
     col_types = c("blank", "text", "text", 
         "date"))
 
@@ -34,7 +34,7 @@ Anesthesia_Induction_Times <- read_excel("C:/BIG FILES/Phenotyping/hemodynamics/
 ```
 
 
-# Studying data available between tables
+# Studying data available across tables
 
 ```{r}
 Case_Name_List_in_Text<-as.vector(unlist(unname(sapply(TextList, `[[`, 1))))
@@ -62,7 +62,7 @@ VitalsignsF<-VitalsignsF %>%
 
 # Anesthesia Induction (AI) and Anesthesia Finish (AF), Anesthesia Times Creation
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 library(dplyr)
 
 Anesthesia_Times<-inner_join(Anesthesia_Induction_Times,Anesthesia_Finish_Times[,c('Case_Name','RECORDTIME')])
@@ -72,7 +72,7 @@ Anesthesia_Times<-rename(Anesthesia_Times,"AI_Time"="Anesthesia Induction ( I )"
 ```
 
 
-# First and End Times of VitalSigns, VitalSigns_Times creation
+# First and End Times of Vital-signs, Vital-signs_Times creation
 
 ```{r}
 library(dplyr)
@@ -183,6 +183,33 @@ rCPBEventsDF <- rbind(rCPBEvents08, rCPBEvents09, rCPBEvents10,rCPBEvents11,rCPB
 
 ```
 
+# FIXING patients with wrong Surgery Times
+
+```{r}
+#which patients do we need to fix?
+AllPeriodsDF%>%filter(duration_Surgery_min<=60)
+
+VitalSigns_Times$VitalSigns_First_Time<-as.character(VitalSigns_Times$VitalSigns_First_Time)
+VitalSigns_Times$VitalSigns_Last_Time<-as.character(VitalSigns_Times$VitalSigns_Last_Time)
+
+#Fixing First Time
+VitalSigns_Times$VitalSigns_First_Time[VitalSigns_Times$Case_Name=='30BECG03.BID']<-"2008-11-14 13:18:00"
+VitalSigns_Times$VitalSigns_First_Time[VitalSigns_Times$Case_Name=='31657D01.BID']<-'2009-06-05 08:53:00'
+VitalSigns_Times$VitalSigns_First_Time[VitalSigns_Times$Case_Name=='35B8CR02.BID']<-'2013-11-08 14:01:00'
+VitalSigns_Times$VitalSigns_First_Time[VitalSigns_Times$Case_Name=='367E7N02.BID']<-'2014-07-14 09:37:00'
+VitalSigns_Times$VitalSigns_First_Time[VitalSigns_Times$Case_Name=='38347804.BID']<-'2016-03-04 08:39:30'
+
+#Fixing Last Time
+VitalSigns_Times$VitalSigns_Last_Time[VitalSigns_Times$Case_Name=='30BECG03.BID']<-'2008-11-14 17:38:00'
+VitalSigns_Times$VitalSigns_Last_Time[VitalSigns_Times$Case_Name=='31657D01.BID']<-'2009-06-05 13:18:00'
+VitalSigns_Times$VitalSigns_Last_Time[VitalSigns_Times$Case_Name=='35B8CR02.BID']<-'2013-11-08 17:34:00'
+VitalSigns_Times$VitalSigns_Last_Time[VitalSigns_Times$Case_Name=='367E7N02.BID']<-'2014-07-14 13:39:00'
+VitalSigns_Times$VitalSigns_Last_Time[VitalSigns_Times$Case_Name=='38347804.BID']<-'2016-03-04 11:55:30'
+
+VitalSigns_Times$VitalSigns_First_Time<-as.POSIXct(VitalSigns_Times$VitalSigns_First_Time, format = "%Y-%m-%d %H:%M:%S", tz='EST')
+VitalSigns_Times$VitalSigns_Last_Time<-as.POSIXct(VitalSigns_Times$VitalSigns_Last_Time, format = "%Y-%m-%d %H:%M:%S", tz='EST')
+```
+
 # All duration_periods_min columns and AllPeriodsDF creation
 
 ```{r}
@@ -196,6 +223,8 @@ AllPeriodsDF["duration_CPB_min"] <-as.numeric(difftime(AllPeriodsDF$CPB_End_Time
 BPE<-subset(BPE,complete.cases(BPE))
 AllPeriodsDF['duration_postCPB_min']<-as.numeric(difftime(AllPeriodsDF$VitalSigns_Last_Time,AllPeriodsDF$CPB_End_Time), units="mins")
 AllPeriodsDF['duration_Surgery_min']<-as.numeric(difftime(AllPeriodsDF$`VitalSigns_Last_Time`,AllPeriodsDF$`VitalSigns_First_Time`), units="mins")
+
+AllPeriodsDF['duration_outsideCPB_min']<-AllPeriodsDF$duration_Surgery_min-AllPeriodsDF$duration_CPB_min
 ```
 
 
